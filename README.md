@@ -1,117 +1,141 @@
-# Arduino core support for CH32 EVT Boards
+# Arduino core for UIAPduino (HID ProMicro CH32V003)
 
-* [Introduction](https://github.com/openwch/arduino_core_ch32#Introduction)<br>
-* [How to use](https://github.com/openwch/arduino_core_ch32#How-to-use)<br>
-* [Supported boards](https://github.com/openwch/arduino_core_ch32#Supported-boards)<br>
-* [OS support](https://github.com/openwch/arduino_core_ch32#OS-support)<br>
-* [Submit bugs](https://github.com/openwch/arduino_core_ch32#Submit-bugs)<br>
+Arduino IDE で UIAPduino を使うための Arduino コアです。  
+[openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32) を fork し、UIAPduino 向けに独自に開発・改良しています。
 
-## Introduction
+---
 
-This repo adds the support of CH32 MCU in Arduino IDE.<br>
+## ボードについて
 
-The file includes:
-* [Arduino_Core_CH32](https://github.com/openwch/arduino_core_ch32):Public library files.
-* [openocd](https://github.com/openwch/openocd_wch):can directly use WCH-LINKE to download and debug wch chips.
-* [riscv-none-embed-gcc](https://github.com/openwch/risc-none-embed-gcc):A toolchain that supports WCH custom half word and byte compression instruction extensions and hardware stack push/pop functions.
+**UIAPduino (HID ProMicro CH32V003)**
 
-## How to use
+- MCU: WCH CH32V003F4 (RISC-V, 48MHz)
+- フラッシュ: 16KB / RAM: 2KB
+- USB: Type-C（HID デバイスとして動作）
+- ピン: 15本の GPIO をヘッダーに引き出し
 
-You can add this software package directly on the IDE through the [Arduino Boards Manager](https://www.arduino.cc/en/guide/cores).
+### ピン配置
 
-Add the following link in the "*Additional Boards Managers URLs*" field:
+| Arduino番号 | ポート | 備考 |
+|:-----------:|:------:|------|
+| GPIO_PIN_0  | PA1    | A1 |
+| GPIO_PIN_1  | PA2    | A0 |
+| GPIO_PIN_2  | PC0    | LED |
+| GPIO_PIN_3  | PC1    | SDA |
+| GPIO_PIN_4  | PC2    | SCL |
+| GPIO_PIN_5  | PC3    | PWM |
+| GPIO_PIN_6  | PC4    | A2 / SS |
+| GPIO_PIN_7  | PC5    | SCK |
+| GPIO_PIN_8  | PC6    | MOSI |
+| GPIO_PIN_9  | PC7    | MISO |
+| GPIO_PIN_10 | PD0    | |
+| GPIO_PIN_11 | PD1    | SWIO デバッグピン（要 `pinDisconnectDebug()`） |
+| GPIO_PIN_12 | PD2    | A3 |
+| GPIO_PIN_15 | PD5    | TX / A5 |
+| GPIO_PIN_16 | PD6    | RX / A6 |
 
-https://github.com/openwch/board_manager_files/raw/main/package_ch32v_index.json
+> **注意:** GPIO_PIN_11 (PD1) は SWIO デバッグピンと共用です。  
+> 通常の GPIO として使う場合は `pinDisconnectDebug(GPIO_PIN_11)` を最初に1回呼んでください。
 
-Then you can search for "**wch**" through the "**board manager**", find the installation package, and install it.
+---
 
-## Supported boards
+## インストール方法
 
-It will be a long-term support and maintenance project, unless we encounter force majeure factors.The current version supports the following development boards:
+Arduino IDE の「環境設定」→「追加のボードマネージャのURL」に以下を追加します:
 
-- [CH32V00x EVT Boards](#CH32V00x-EVT-Boards)
-- [CH32V10x EVT Boards](#CH32V10x-EVT-Boards)
-- [CH32V20x EVT Boards](#CH32V20x-EVT-Boards)
-- [CH32V30x EVT Boards](#CH32V30x-EVT-Boards)
-- [CH32X035 EVT Boards](#CH32X035-EVT-Boards)
-
-### CH32V00x EVT Boards
-
-| Status | Boards name | Peripherals | Release | Notes |
-| :----: |     ----    |     ----    | :-----: | :---- |
-| :heavy_check_mark: | CH32V003F4P | ADC,DAC,USART,GPIO,EXTI,SysTick | 1.0.0 | SPI,I2C_Master since 1.0.2 |
-
-### CH32V20x EVT Boards
-
-| Status | Boards name | Peripherals | Release | Notes |
-| :----: |     ----    |     ----    | :-----: | :---- |
-| :heavy_check_mark: | CH32V203G8U | ADC,DAC,USART,GPIO,EXTI,SysTick | 1.0.0 | SPI,I2C_Master since 1.0.2 |
-
-### CH32X035 EVT Boards
-
-| Status | Boards name | Peripherals | Release | Notes |
-| :----: |     ----    |     ----    | :-----: | :---- |
-| :heavy_check_mark: | CH32X035G8U | ADC,DAC,USART,GPIO,EXTI,SysTick | 1.0.1 | SPI,I2C_Master since 1.0.2 | 
-
-### CH32V10x EVT Boards
-
-| Status | Boards name | Peripherals | Release | Notes |
-| :----: |     ----    |     ----    | :-----: | :---- |
-| :heavy_check_mark: | CH32V103R8T6_BLACK | ADC,DAC,USART,GPIO,EXTI,SysTick,SPI,I2C_Master | 1.0.3 | - |
-
-### CH32V30x EVT Boards
-
-| Status | Boards name | Peripherals | Release | Notes |
-| :----: |     ----    |     ----    | :-----: | :---- |
-| :heavy_check_mark: | CH32V307VCT6_BLACK | ADC,DAC,USART,GPIO,EXTI,SysTick,SPI,I2C_Master | 1.0.3 | - |
-
-
-## OS support
-
-Adopting toolchain and openocd under [MRS](http://www.mounriver.com/), supporting HPE, custom byte and half-word compression extensions,"upload" via WCH_LINKE. 
-
-**Most importantly, the version of Arduino IDE is 2.0+.**
-
-### Win
-
-If you encounter an error during upload, please confirm that the version of your WCH-LINKE is consistent with the latest version under MRS. 
-WCH-LINKE related information can [refer to this link](https://github.com/openwch/ch32v307/tree/main/WCH-Link). 
-
-### Linux
-
-For Linux, after installing the support package for the first time, to ensure the normal upload function, 
-please open the packages installation path of the Arduino IDE, run the script, and automatically configure the environment.
-
-Usually, it can be operated as follows:<br>
-
-```bash
-cd ~/.arduino15/packages/WCH/tools/beforeinstall/1.0.0
-./start.sh
 ```
-After authorization, it will copy or generate some necessary libraries and rules:
-
-```text
-Copy Libs
-[sudo] password for temperslee: 
-Register new Libs
-copy rules
-Reload rules
-DONE
+https://github.com/tarosay/board_manager_files/raw/main/package_ch32v_index.json
 ```
 
-### MAC
+「ボードマネージャ」で `UIAPduino` を検索してインストールしてください。
 
-For MAC, please install the "libusb" library before starting to use it.
-```bash
-brew install libusb
+---
+
+## HID API
+
+USB 経由でホスト PC とデータを送受信します。  
+`Serial.print()` の代わりに `HIDuiap` オブジェクトを使います。
+
+```cpp
+void setup() {
+  HIDuiap.begin();
+  delay(5000);  // USB 接続待ち
+}
+
+void loop() {
+  HIDuiap.write((const uint8_t*)"Hello UIAPduino\n", 16);
+  delay(1000);
+}
 ```
-If "libusb" related errors still occur when "uploading" firmware after installing the libusb library, 
-please contact the **MRS team** for assistance through "*support@mounriver.com*".
 
+| メソッド | 説明 |
+|---------|------|
+| `HIDuiap.begin()` | HID 通信を開始する |
+| `HIDuiap.write(buf, len)` | データを送信する |
+| `HIDuiap.read(buf, maxlen)` | データを受信する |
+| `HIDuiap.available()` | 受信データのバイト数を返す |
 
-## Submit bugs
+---
 
-If you have any questions, you could contact me through the email "*yy@wch.cn*".
-Or you could [file an issue on GitHub](https://github.com/openwch/arduino_core_ch32/issues/new).
+## コアの独自改良点
 
+### `pinDisconnectDebug(uint32_t pin)`
 
+Arduino ピン番号を渡してデバッグ機能を切り離す関数です。  
+`PinName` 型への変換は内部で自動的に行われます。
+
+```cpp
+pinDisconnectDebug(GPIO_PIN_11);  // PD1 を通常 GPIO として使えるようにする
+pinMode(GPIO_PIN_11, OUTPUT);
+```
+
+> **フラッシュ節約のため `pinMode()` 内では自動実行されません。**  
+> 必要なピンに対してスケッチの `setup()` で明示的に呼んでください。
+
+### `GPIO_PIN_N` マクロ
+
+ピン番号を分かりやすく記述するためのエイリアスです。  
+`GPIO_Pin_N`（小文字 `p`）は CH32 ペリフェラルライブラリのビットマスクとして既に使われているため、大文字 `GPIO_PIN_N` を採用しています。
+
+```cpp
+pinMode(GPIO_PIN_6, OUTPUT);   // PC4 を出力に設定
+digitalWrite(GPIO_PIN_6, HIGH);
+```
+
+---
+
+## サンプルスケッチ
+
+`ファイル` → `スケッチ例` → `HID` から開けます。
+
+| スケッチ | 内容 |
+|---------|------|
+| Blink | LED (GPIO_PIN_2 / PC0) を点滅 |
+| GPIO_test | ボード上の全 GPIO を順番にテスト |
+| HidDigitalWriteRead | GPIO の書き込み・読み返しを HID で確認 |
+| HidLoopbackBlink | HID 受信データに応じて LED を制御 |
+| HidMillisTicker | `millis()` の値を定期送信 |
+| HidMicrosTicker | `micros()` の値を定期送信 |
+| HidAdcMonitor | ADC 値を定期送信 |
+| PwmAndToneTest | PWM / Tone の動作確認 |
+
+---
+
+## 対応 OS
+
+| OS | 状況 |
+|----|------|
+| Windows | 動作確認済み（Arduino IDE 2.0 以上） |
+| Linux | 動作確認中 |
+| macOS | 動作確認中 |
+
+---
+
+## ライセンス
+
+fork 元: [openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32)  
+本リポジトリの改変部分は同ライセンスに従います。
+
+## 連絡先・バグ報告
+
+[GitHub Issues](https://github.com/tarosay/arduino_core_ch32/issues/new) にてお知らせください。

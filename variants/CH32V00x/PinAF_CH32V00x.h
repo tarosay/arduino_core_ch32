@@ -85,18 +85,18 @@ static inline void pinV32_DisconnectDebug(PinName pin)
     * to lose traces
     */
 #ifndef CH32V_LOCK_DEBUG
-  // Enable AFIO clock
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-  // Disconnect JTAG-DP + SW-DP signals.
-  // Warning: Need to reconnect under reset
-  if ((pin == PD_1) ) 
+  // Disconnect SWIO (PD1) debug signal so the pin can be used as normal GPIO.
+  // Warning: Need to reconnect under reset.
+  // RCC enable is inside the if-block so that this function is a true no-op
+  // for all other pins, avoiding unnecessary RCC/AFIO code being linked in.
+  if (pin == PD_1)
   {
-     GPIO_PinRemapConfig(GPIO_Remap_SDI_Disable, ENABLE);  // JTAG-DP Disabled and SW-DP Disabled
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SDI_Disable, ENABLE);
   }
 #else
   (void)(pin);
-#endif 
+#endif
 }
 
 static inline void pin_SetV32AFPin(uint32_t afnum)

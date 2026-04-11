@@ -58,6 +58,16 @@ extern int digitalRead(uint32_t ulPin) ;
  */
 extern void digitalToggle(uint32_t ulPin) ;
 
+/**
+ * \brief Disconnect the debug interface from a pin so it can be used as normal GPIO.
+ *        Required for GPIO_PIN_11 (PD1 / SWIO) on CH32V003.
+ *        Call once before the first pinMode() on that pin.
+ *        Keeping this explicit avoids linking RCC/AFIO code into every sketch.
+ *
+ * \param dwPin Arduino pin number (e.g. GPIO_PIN_11)
+ */
+extern void pinDisconnectDebug(uint32_t dwPin);
+
 #ifdef __cplusplus
 }
 #endif

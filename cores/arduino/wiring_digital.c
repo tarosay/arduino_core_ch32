@@ -19,6 +19,7 @@
 #include "Arduino.h"
 
 #include "PinConfigured.h"
+#include "ch32/pinconfig.h"
 
 
 #ifdef __cplusplus
@@ -92,6 +93,17 @@ int digitalRead(uint32_t ulPin)
 void digitalToggle(uint32_t ulPin)
 {
   digitalToggleFast(digitalPinToPinName(ulPin));
+}
+
+// Disconnect the debug interface from a pin given its Arduino pin number.
+// Call once before pinMode() for pins shared with the debug interface (e.g. GPIO_PIN_11 / PD1).
+// Keeping this as a separate call avoids pulling RCC/AFIO library code into every sketch.
+void pinDisconnectDebug(uint32_t ulPin)
+{
+  PinName p = digitalPinToPinName(ulPin);
+  if (p != NC) {
+    pin_DisconnectDebug(p);
+  }
 }
 
 #ifdef __cplusplus

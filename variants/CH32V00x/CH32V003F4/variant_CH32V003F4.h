@@ -47,7 +47,29 @@
 #define NUM_DIGITAL_PINS        18
 #define NUM_ANALOG_INPUTS       8
 
-// #define ADC_CTLR_ADCAL          
+// GPIO_PIN_N: Arduino digital pin number aliases (D0 - D17)
+// GPIO_Pin_N (lowercase p) is already used by the CH32 peripheral library
+// as a bit-mask (0x0001 etc.), so we use uppercase GPIO_PIN_N here.
+#define GPIO_PIN_0              PA1   // D0
+#define GPIO_PIN_1              PA2   // D1
+#define GPIO_PIN_2              PC0   // D2
+#define GPIO_PIN_3              PC1   // D3
+#define GPIO_PIN_4              PC2   // D4
+#define GPIO_PIN_5              PC3   // D5
+#define GPIO_PIN_6              PC4   // D6 / A2
+#define GPIO_PIN_7              PC5   // D7
+#define GPIO_PIN_8              PC6   // D8
+#define GPIO_PIN_9              PC7   // D9
+#define GPIO_PIN_10             PD0   // D10
+#define GPIO_PIN_11             PD1   // D11 (SWIO debug pin - call pinDisconnectDebug() first)
+#define GPIO_PIN_12             PD2   // D12 / A3
+#define GPIO_PIN_13             PD3   // D13 / A4  (also USB D+, not on header)
+#define GPIO_PIN_14             PD4   // D14 / A7  (also USB D-, not on header)
+#define GPIO_PIN_15             PD5   // D15 / A5  (TX)
+#define GPIO_PIN_16             PD6   // D16 / A6  (RX)
+#define GPIO_PIN_17             PD7   // D17       (RESET, not on header)
+
+// #define ADC_CTLR_ADCAL
 #define ADC_RESOLUTION          10
 
 

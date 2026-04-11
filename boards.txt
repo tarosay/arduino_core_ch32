@@ -17,7 +17,7 @@ menu.upload_method=Upload method
 ##############################################################################
 ##CH32V003 Board   
 
-CH32V00x_EVT.name=Pro Micro CH32V003 (UIAPUSB)
+CH32V00x_EVT.name=HID ProMicro CH32V003
 CH32V00x_EVT.build.core=arduino
 CH32V00x_EVT.build.board=CH32V00x_EVT
 CH32V00x_EVT.upload.maximum_size=0
@@ -140,42 +140,3 @@ CH32V00x_EVT.menu.rtlib.nanofps.build.flags.ldflags=--specs=nano.specs --specs=n
 CH32V00x_EVT.menu.rtlib.full=Newlib Standard
 CH32V00x_EVT.menu.rtlib.full.build.flags.ldflags=--specs=nosys.specs
 
-uiapusb_min.name=UIAPduino Minimal USB
-
-uiapusb_min.upload.tool=minichlink
-uiapusb_min.upload.maximum_size=16384
-uiapusb_min.upload.maximum_data_size=2048
-
-uiapusb_min.build.board=CH32V003F4
-uiapusb_min.build.march=rv32ec
-uiapusb_min.build.mabi=ilp32e
-uiapusb_min.build.f_cpu=48000000L
-uiapusb_min.build.core=uiapusb_min
-uiapusb_min.build.variant=uiapusb_min
-uiapusb_min.build.variant_h=variant_CH32V003F4.h
-uiapusb_min.build.series=CH32V00x
-uiapusb_min.build.chip=CH32V003F4
-uiapusb_min.build.extra_flags=-DCH32V003
-uiapusb_min.build.flags.clock=-DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000
-uiapusb_min.build.flags.optimize=-Os
-uiapusb_min.build.flags.debug=-DNDEBUG -w
-uiapusb_min.build.flags.ldflags=
-uiapusb_min.build.ch_extra_lib=
-uiapusb_min.build.usb_flags=
-uiapusb_min.build.bootloader_flags=
-uiapusb_min.compiler.c.extra_flags=
-uiapusb_min.compiler.cpp.extra_flags=
-uiapusb_min.compiler.S.extra_flags=
-uiapusb_min.compiler.ar.extra_flags=
-uiapusb_min.compiler.elf2bin.extra_flags=
-uiapusb_min.compiler.elf2hex.extra_flags=
-uiapusb_min.compiler.elf2lst.extra_flags=
-uiapusb_min.upload.tool=minichlink
-uiapusb_min.upload.tool.windows=minichlink
-uiapusb_min.upload.protocol=minichlink
-uiapusb_min.upload.tool=minichlink
-uiapusb_min.upload.tool.windows=minichlink
-uiapusb_min.upload.protocol=minichlink
-uiapusb_min.upload.maximum_size=16384
-uiapusb_min.upload.maximum_data_size=2048
-uiapusb_min.build.ldscript=generated_ch32fun.ld

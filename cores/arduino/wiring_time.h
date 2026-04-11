@@ -22,10 +22,10 @@
 
 #include "clock.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /**
  * \brief Returns the number of milliseconds since the Arduino board began running the current program.
  *
@@ -33,7 +33,7 @@ extern "C" {
  *
  * \return Number of milliseconds since the program started (uint32_t)
  */
-extern uint32_t millis(void) ;
+extern uint32_t millis(void);
 
 /**
  * \brief Returns the number of microseconds since the Arduino board began running the current program.
@@ -45,7 +45,7 @@ extern uint32_t millis(void) ;
  *
  * \note There are 1,000 microseconds in a millisecond and 1,000,000 microseconds in a second.
  */
-extern uint32_t micros(void) ;
+extern uint32_t micros(void);
 
 /**
  * \brief Pauses the program for the amount of time (in milliseconds) specified as parameter.
@@ -53,7 +53,7 @@ extern uint32_t micros(void) ;
  *
  * \param ms the number of milliseconds to pause (uint32_t)
  */
-extern void delay(uint32_t ms) ;
+extern void delay(uint32_t ms);
 
 /**
  * \brief Pauses the program for the amount of time (in microseconds) specified as parameter.
@@ -61,63 +61,19 @@ extern void delay(uint32_t ms) ;
  * \param us the number of microseconds to pause (uint32_t)
  */
 
-#ifndef CH32V10x
-static inline void delayMicroseconds(uint32_t) __attribute__((always_inline, unused));
-static inline void delayMicroseconds(uint32_t us)
-{
-  __IO uint64_t currentTicks = SysTick->CNT;
-  /* Number of ticks per millisecond */
-  uint64_t tickPerMs = SysTick->CMP + 1;
-  /* Number of ticks to count */
-  uint64_t nbTicks = ((us - ((us > 0) ? 1 : 0)) * tickPerMs) / 1000;
-  /* Number of elapsed ticks */
-  uint64_t elapsedTicks = 0;
-  __IO uint64_t oldTicks = currentTicks;
-  do {
-    currentTicks = SysTick->CNT;
-    // elapsedTicks += (oldTicks < currentTicks) ? tickPerMs + oldTicks - currentTicks :
-    //                 oldTicks - currentTicks;
-    
-    //increment
-    elapsedTicks += (oldTicks <= currentTicks) ? currentTicks - oldTicks :
-                     tickPerMs - oldTicks + currentTicks;
+extern void DelaySysTick(uint32_t n);
 
-    oldTicks = currentTicks;
-  } while (nbTicks > elapsedTicks);  
-}
-#else
-#define SYSTICK_CNTL    (0xE000F004)   
-#define SYSTICK_CNTH    (0xE000F008)
-#define SYSTICK_CMPL    (0xE000F00C)
-#define SYSTICK_CMPH    (0xE000F010)
-
-static inline void delayMicroseconds(uint32_t) __attribute__((always_inline, unused));
-static inline void delayMicroseconds(uint32_t us)
-{
-  __IO uint64_t currentTicks = *((__IO uint32_t *)SYSTICK_CNTH);
-                currentTicks = (currentTicks << 32) +  *((__IO uint32_t *)SYSTICK_CNTL); 
-  /* Number of ticks per millisecond */
-  uint64_t tickPerMs = *((__IO uint32_t *)SYSTICK_CMPH);
-           tickPerMs = (tickPerMs << 32) + *((__IO uint32_t *)SYSTICK_CMPL) + 1;        
-  /* Number of ticks to count */
-  uint64_t nbTicks = ((us - ((us > 0) ? 1 : 0)) * tickPerMs) / 1000;
-  /* Number of elapsed ticks */
-  uint64_t elapsedTicks = 0;
-  __IO uint64_t oldTicks = currentTicks;
-  do {
-    currentTicks = *((__IO uint32_t *)SYSTICK_CNTH);
-    currentTicks = (currentTicks << 32) +  *((__IO uint32_t *)SYSTICK_CNTL); 
-    //increment
-    elapsedTicks += (oldTicks <= currentTicks) ? currentTicks - oldTicks :
-                     tickPerMs - oldTicks + currentTicks;
-
-    oldTicks = currentTicks;
-  } while (nbTicks > elapsedTicks);  
-}
-
+#ifndef DELAY_US_TICKS
+#define DELAY_US_TICKS 48u
 #endif
 
-
+static inline void delayMicroseconds(uint32_t) __attribute__((always_inline, unused));
+static inline void delayMicroseconds(uint32_t us)
+{
+  if (us != 0) {
+    DelaySysTick(us * DELAY_US_TICKS);
+  }
+}
 
 #ifdef __cplusplus
 }

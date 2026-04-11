@@ -1,8 +1,10 @@
 /* Tone.cpp
 
-  A Tone Generator Library
+  A Tone Generator Library - Software Implementation for ch32fun/rv003usb
 
-  Written by Brett Hagman
+  Original by Brett Hagman, modified for CH32V003 with ch32fun.
+  This version uses software bit-bang (DelaySysTick) instead of
+  HardwareTimer to avoid heap allocation and interrupt issues.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -18,132 +20,75 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-//Modified 3 june 2024 by TempersLee for CH32duino
 
 #include "Arduino.h"
-#include "HardwareTimer.h"
 
-#if defined(TIM_MODULE_ENABLED) && defined(TIMER_TONE) && !defined(TIM_MODULE_ONLY)
+extern "C" void DelaySysTick(uint32_t n);
 
-#define MAX_FREQ  65535
-
-typedef struct {
-  PinName pin;
-  int32_t count;
-} timerPinInfo_t;
-
-static void timerTonePinInit(PinName p, uint32_t frequency, uint32_t duration);
-static void tonePeriodElapsedCallback();
-static timerPinInfo_t TimerTone_pinInfo = {NC, 0};
-static HardwareTimer *TimerTone = NULL;
-
-/**
-  * @brief  Tone Period elapsed callback in non-blocking mode
-  * @param  htim : timer handle
-  * @retval None
-  */
-static void tonePeriodElapsedCallback()
-{
-  GPIO_TypeDef *port = get_GPIO_Port(CH_PORT(TimerTone_pinInfo.pin));
-
-  if (port != NULL) {
-    if (TimerTone_pinInfo.count != 0) {
-      if (TimerTone_pinInfo.count > 0) {
-        TimerTone_pinInfo.count--;
-      }
-      digital_io_toggle(port, CH_MAP_GPIO_PIN(TimerTone_pinInfo.pin));
-    } else {
-      digital_io_write(port, CH_MAP_GPIO_PIN(TimerTone_pinInfo.pin), 0);
-    }
-  }
-}
-
-/**
-  * @brief  This function will reset the tone timer
-  * @param  port : pointer to port
-  * @param  pin : pin number to toggle
-  * @retval None
-  */
-static void timerTonePinDeinit()
-{
-  if (TimerTone != NULL) {
-    TimerTone->timerHandleDeinit();
-  }
-  if (TimerTone_pinInfo.pin != NC) {
-    pin_function(TimerTone_pinInfo.pin, CH_PIN_DATA(CH_MODE_INPUT, CH_CNF_INPUT_FLOAT, NOPULL, AFIO_NONE));
-    TimerTone_pinInfo.pin = NC;
-  }
-}
-
-static void timerTonePinInit(PinName p, uint32_t frequency, uint32_t duration)
-{
-  uint32_t timFreq = 2 * frequency;
-
-  if (frequency <= MAX_FREQ) {
-    if (frequency == 0) {
-      if (TimerTone != NULL) {
-        TimerTone->pause();
-      }
-    } else {
-      TimerTone_pinInfo.pin = p;
-
-      //Calculate the toggle count
-      if (duration > 0) {
-        TimerTone_pinInfo.count = ((timFreq * duration) / 1000);
-      } else {
-        TimerTone_pinInfo.count = -1;
-      }
-
-      pin_function(TimerTone_pinInfo.pin, CH_PIN_DATA(CH_MODE_OUTPUT_50MHz, CH_CNF_OUTPUT_PP, NOPULL, AFIO_NONE));
-
-      TimerTone->setOverflow(timFreq, HERTZ_FORMAT);
-      TimerTone->attachInterrupt(tonePeriodElapsedCallback);
-      TimerTone->resume();
-    }
-  }
-}
+#ifndef DELAY_US_TICKS
+#define DELAY_US_TICKS 48u
+#endif
 
 // frequency (in hertz) and duration (in milliseconds).
 void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
 {
-  PinName p = digitalPinToPinName(_pin);
-
-  if (TimerTone == NULL) {
-    TimerTone = new HardwareTimer(TIMER_TONE);
+  if (frequency == 0) {
+    return;
   }
 
-  if (p != NC) {
-    if ((TimerTone_pinInfo.pin == NC) || (TimerTone_pinInfo.pin == p)) {
-      timerTonePinInit(p, frequency, duration);
+  // Half-period in microseconds
+  uint32_t half_period_us = 500000UL / frequency;
+  if (half_period_us == 0) {
+    half_period_us = 1;
+  }
+
+  // Total number of toggles (2 toggles per cycle)
+  uint32_t toggles;
+  if (duration > 0) {
+    toggles = (2UL * frequency * duration) / 1000UL;
+    if (toggles == 0) {
+      toggles = 1;
     }
+  } else {
+    // duration == 0 means play indefinitely; limit to ~1 second
+    toggles = 2UL * frequency;
   }
+
+  PinName p = digitalPinToPinName(_pin);
+  if (p == NC) {
+    return;
+  }
+
+  GPIO_TypeDef *port = get_GPIO_Port(CH_PORT(p));
+  uint32_t pin_mask = CH_MAP_GPIO_PIN(p);
+
+  if (port == NULL) {
+    return;
+  }
+
+  // Set pin as output
+  pin_function(p, CH_PIN_DATA(CH_MODE_OUTPUT_50MHz, CH_CNF_OUTPUT_PP, NOPULL, AFIO_NONE));
+
+  uint32_t delay_ticks = half_period_us * DELAY_US_TICKS;
+
+  for (uint32_t i = 0; i < toggles; i++) {
+    digital_io_toggle(port, pin_mask);
+    DelaySysTick(delay_ticks);
+  }
+
+  // Ensure pin is LOW after tone finishes
+  digital_io_write(port, pin_mask, 0);
 }
 
 void noTone(uint8_t _pin, bool destruct)
 {
-  PinName p = digitalPinToPinName(_pin);
-  if ((p != NC) && (TimerTone_pinInfo.pin == p) && (TimerTone != NULL)) {
-    if (destruct) {
-      timerTonePinDeinit();
-      delete (TimerTone);
-      TimerTone = NULL;
-    } else {
-      TimerTone->pause();
-    }
-  }
-}
-#else
-#warning "TIMER_TONE or TIM_MODULE_ENABLED not defined"
-void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
-{
-  (void)(_pin);
-  (void)(frequency);
-  (void)(duration);
-}
-
-void noTone(uint8_t _pin, bool destruct)
-{
-  (void)(_pin);
   (void)(destruct);
+  PinName p = digitalPinToPinName(_pin);
+  if (p != NC) {
+    GPIO_TypeDef *port = get_GPIO_Port(CH_PORT(p));
+    uint32_t pin_mask = CH_MAP_GPIO_PIN(p);
+    if (port != NULL) {
+      digital_io_write(port, pin_mask, 0);
+    }
+  }
 }
-#endif /* TIM_MODULE_ENABLED && TIMER_TONE && !TIM_MODULE_ONLY*/

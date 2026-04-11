@@ -162,7 +162,7 @@ handle_reset:
     call __libc_init_array
 
     jal   SystemInit
-    la t0, main
+    la t0, handle_reset
     csrw mepc, t0
     mret
 

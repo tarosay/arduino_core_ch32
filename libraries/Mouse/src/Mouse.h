@@ -1,0 +1,26 @@
+#pragma once
+#include <stdint.h>
+
+#define MOUSE_LEFT    0x01
+#define MOUSE_RIGHT   0x02
+#define MOUSE_MIDDLE  0x04
+
+class MouseClass {
+public:
+    void begin();
+    void end();
+
+    // 相対移動 (-127 ～ 127)
+    void move(int x, int y, int wheel = 0);
+
+    // ボタン操作
+    void press(uint8_t button = MOUSE_LEFT);
+    void release(uint8_t button = MOUSE_LEFT);
+    void click(uint8_t button = MOUSE_LEFT);
+    bool isPressed(uint8_t button = MOUSE_LEFT);
+
+private:
+    uint8_t _buttons;
+};
+
+extern MouseClass Mouse;

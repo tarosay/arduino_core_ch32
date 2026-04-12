@@ -140,3 +140,96 @@ CH32V00x_EVT.menu.rtlib.nanofps.build.flags.ldflags=--specs=nano.specs --specs=n
 CH32V00x_EVT.menu.rtlib.full=Newlib Standard
 CH32V00x_EVT.menu.rtlib.full.build.flags.ldflags=--specs=nosys.specs
 
+
+##############################################################################
+##CH32V003 KBD+Mouse Board
+
+CH32V00x_KBD.name=HID ProMicro CH32V003 KBD+Mouse
+CH32V00x_KBD.build.core=arduino
+CH32V00x_KBD.build.board=CH32V003F4_KBD
+CH32V00x_KBD.upload.maximum_size=0
+CH32V00x_KBD.upload.maximum_data_size=0
+CH32V00x_KBD.build.variant_h=variant_{build.board}.h
+CH32V00x_KBD.build.ldscript=generated_ch32fun.ld
+CH32V00x_KBD.debug.tool=gdb-WCH_LinkE
+
+#Board version 1.4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1=V1.4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.node=NODE_V003F4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.upload.maximum_size=16384
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.upload.maximum_data_size=2048
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.mcu=QingKe-V2A
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.board=CH32V003F4_KBD
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.series=CH32V00x
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.variant=CH32V00x/CH32V003F4_KBD
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.chip=CH32V003F4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.extra_flags=-DCH32V003 -DUIAP_COMPOSITE_HID
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.march=rv32ec
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.mabi=ilp32e
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.math_lib_gcc=-lm
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.IQ_math_RV32=
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_V1.build.ch_extra_lib=
+
+#Board version 1.4 + WebHID (EP3)
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID=V1.4 + WebHID (EP3)
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.node=NODE_V003F4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.upload.maximum_size=16384
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.upload.maximum_data_size=2048
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.mcu=QingKe-V2A
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.board=CH32V003F4_KBD
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.series=CH32V00x
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.variant=CH32V00x/CH32V003F4_KBD
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.chip=CH32V003F4
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.extra_flags=-DCH32V003 -DUIAP_COMPOSITE_HID -DUIAP_WEBHID
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.march=rv32ec
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.mabi=ilp32e
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.math_lib_gcc=-lm
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.IQ_math_RV32=
+CH32V00x_KBD.menu.pnum.CH32V003F4_KBD_WEBHID.build.ch_extra_lib=
+
+# Upload menu
+CH32V00x_KBD.menu.upload_method.minichlink=minichlink
+CH32V00x_KBD.menu.upload_method.minichlink.upload.protocol=
+CH32V00x_KBD.menu.upload_method.minichlink.upload.options=
+CH32V00x_KBD.menu.upload_method.minichlink.upload.tool=minichlink
+CH32V00x_KBD.menu.upload_method.swdMethod=WCH-SWD
+CH32V00x_KBD.menu.upload_method.swdMethod.upload.protocol=
+CH32V00x_KBD.menu.upload_method.swdMethod.upload.options=
+CH32V00x_KBD.menu.upload_method.swdMethod.upload.tool=WCH_linkE
+CH32V00x_KBD.menu.upload_method.ispMethod=WCH-ISP
+CH32V00x_KBD.menu.upload_method.ispMethod.upload.protocol=
+CH32V00x_KBD.menu.upload_method.ispMethod.upload.options=
+CH32V00x_KBD.menu.upload_method.ispMethod.upload.tool=wchisp
+
+# Clock Select
+CH32V00x_KBD.menu.clock.48MHz_HSI=48MHz Internal
+CH32V00x_KBD.menu.clock.48MHz_HSI.build.flags.clock=-DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000
+CH32V00x_KBD.menu.clock.24MHz_HSI=24MHz Internal
+CH32V00x_KBD.menu.clock.24MHz_HSI.build.flags.clock=-DSYSCLK_FREQ_24MHz_HSI=24000000 -DF_CPU=24000000
+CH32V00x_KBD.menu.clock.8MHz_HSI=8MHz Internal
+CH32V00x_KBD.menu.clock.8MHz_HSI.build.flags.clock=-DSYSCLK_FREQ_8MHz_HSI=8000000 -DF_CPU=8000000
+
+# Optimizations
+CH32V00x_KBD.menu.opt.osstd=Smallest (-Os default)
+CH32V00x_KBD.menu.opt.osstd.build.flags.optimize=-Os
+CH32V00x_KBD.menu.opt.oslto=Smallest (-Os) with LTO
+CH32V00x_KBD.menu.opt.oslto.build.flags.optimize=-Os -flto
+CH32V00x_KBD.menu.opt.o1std=Fast (-O1)
+CH32V00x_KBD.menu.opt.o1std.build.flags.optimize=-O1
+CH32V00x_KBD.menu.opt.o2std=Faster (-O2)
+CH32V00x_KBD.menu.opt.o2std.build.flags.optimize=-O2
+CH32V00x_KBD.menu.opt.o3std=Fastest (-O3)
+CH32V00x_KBD.menu.opt.o3std.build.flags.optimize=-O3
+
+# Debug information
+CH32V00x_KBD.menu.dbg.none=None
+CH32V00x_KBD.menu.dbg.none.build.flags.debug=-DNDEBUG
+CH32V00x_KBD.menu.dbg.enable_sym=Symbols Enabled (-g)
+CH32V00x_KBD.menu.dbg.enable_sym.build.flags.debug=-g -DNDEBUG
+
+# C Runtime Library
+CH32V00x_KBD.menu.rtlib.none=None (ch32fun)
+CH32V00x_KBD.menu.rtlib.none.build.flags.ldflags=
+CH32V00x_KBD.menu.rtlib.nano=Newlib Nano
+CH32V00x_KBD.menu.rtlib.nano.build.flags.ldflags=--specs=nano.specs --specs=nosys.specs
+

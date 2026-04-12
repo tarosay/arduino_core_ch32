@@ -1,6 +1,261 @@
 #ifndef _USB_CONFIG_H
 #define _USB_CONFIG_H
 
+#ifdef UIAP_COMPOSITE_HID
+// ============================================================
+// KBD+Mouse composite HID configuration
+// ============================================================
+
+#ifdef UIAP_WEBHID
+// EP3 追加・WebHID 双方向通信あり
+#define ENDPOINTS 4
+#define RV003USB_HANDLE_USER_DATA  1
+#define RV003USB_HID_FEATURES      1
+#else
+// KBD+Mouse のみ
+#define ENDPOINTS 3
+#define RV003USB_HANDLE_USER_DATA  0
+#define RV003USB_HID_FEATURES      0
+#endif
+
+#define USB_PORT D     // [A,C,D] GPIO Port to use with D+, D- and DPU
+#define USB_PIN_DP 3   // [0-4] GPIO Number for USB D+ Pin
+#define USB_PIN_DM 4   // [0-4] GPIO Number for USB D- Pin
+// #define USB_PIN_DPU 2  // Comment out if not used / tied to 3V3
+
+#define RV003USB_DEBUG_TIMING      0
+#define RV003USB_OPTIMIZE_FLASH    1
+#define RV003USB_EVENT_DEBUGGING   0
+#define RV003USB_HANDLE_IN_REQUEST 1
+#define RV003USB_OTHER_CONTROL     0
+#define RV003USB_USB_TERMINAL      0
+
+// EXTI sharing: USB pins (D+=3, D-=4) are excluded from the mask.
+#define RV003_ADD_EXTI_MASK  0xE7
+#define RV003_ADD_EXTI_HANDLER \
+	sw ra, 56(sp); sw t0, 60(sp); sw t1, 64(sp); sw t2, 68(sp); \
+	call rv003usb_exti_dispatch; \
+	lw t2, 68(sp); lw t1, 64(sp); lw t0, 60(sp); lw ra, 56(sp);
+
+#ifndef __ASSEMBLER__
+
+#include <tinyusb_hid.h>
+
+#ifdef INSTANCE_DESCRIPTORS
+
+static const uint8_t device_descriptor[] = {
+	18, //Length
+	1,  //Type (Device)
+	0x10, 0x01, //Spec
+	0x0, //Device Class
+	0x0, //Device Subclass
+	0x0, //Device Protocol  (000 = use config descriptor)
+	0x08, //Max packet size for EP0
+	0x09, 0x12, //ID Vendor
+	0x04, 0xd0, //ID Product (0xd004 = UIAPduino KBD+Mouse)
+	0x01, 0x00, //ID Rev
+	1, //Manufacturer string
+	2, //Product string
+	3, //Serial string
+	1, //Max number of configurations
+};
+
+static const uint8_t mouse_hid_desc[] = {
+	HID_USAGE_PAGE( HID_USAGE_PAGE_DESKTOP ),
+	HID_USAGE( HID_USAGE_DESKTOP_MOUSE ),
+	HID_COLLECTION ( HID_COLLECTION_APPLICATION ),
+		HID_USAGE( HID_USAGE_DESKTOP_POINTER ),
+		HID_COLLECTION ( HID_COLLECTION_PHYSICAL ),
+			HID_USAGE_PAGE( HID_USAGE_PAGE_BUTTON ),
+			HID_USAGE_MIN( 1 ),
+			HID_USAGE_MAX( 3 ),
+			HID_LOGICAL_MIN( 0 ),
+			HID_LOGICAL_MAX( 1 ),
+			HID_REPORT_COUNT( 3 ),
+			HID_REPORT_SIZE( 1 ),
+			HID_INPUT( 0x02 ),
+			HID_REPORT_COUNT( 1 ),
+			HID_REPORT_SIZE( 5 ),
+			HID_INPUT( 0x03 ),
+			HID_USAGE_PAGE( HID_USAGE_PAGE_DESKTOP ),
+			HID_USAGE( HID_USAGE_DESKTOP_X ),
+			HID_USAGE( HID_USAGE_DESKTOP_Y ),
+			HID_USAGE( HID_USAGE_DESKTOP_WHEEL ),
+			HID_LOGICAL_MIN( 0x81 ),
+			HID_LOGICAL_MAX( 0x7f ),
+			HID_REPORT_SIZE( 8 ),
+			HID_REPORT_COUNT( 3 ),
+			HID_INPUT( 0x06 ),
+		HID_COLLECTION_END,
+	HID_COLLECTION_END,
+};
+
+static const uint8_t keyboard_hid_desc[] = {
+	HID_USAGE_PAGE( HID_USAGE_PAGE_DESKTOP ),
+	HID_USAGE( HID_USAGE_DESKTOP_KEYBOARD ),
+	HID_COLLECTION ( HID_COLLECTION_APPLICATION ),
+		HID_REPORT_SIZE( 1 ),
+		HID_REPORT_COUNT( 8 ),
+		HID_USAGE_PAGE( HID_USAGE_PAGE_KEYBOARD ),
+		HID_USAGE_MIN( 0xe0 ),
+		HID_USAGE_MAX( 0xe7 ),
+		HID_LOGICAL_MIN( 0 ),
+		HID_LOGICAL_MAX( 1 ),
+		HID_INPUT( 0x02 ),
+		HID_REPORT_COUNT( 1 ),
+		HID_REPORT_SIZE( 8 ),
+		HID_INPUT( 0x03 ),
+		HID_REPORT_COUNT( 5 ),
+		HID_REPORT_SIZE( 1 ),
+		HID_USAGE_PAGE( HID_USAGE_PAGE_LED ),
+		HID_USAGE_MIN( 0x01 ),
+		HID_USAGE_MAX( 0x05 ),
+		HID_OUTPUT( 0x02 ),
+		HID_REPORT_COUNT( 1 ),
+		HID_REPORT_SIZE( 3 ),
+		HID_OUTPUT( 0x03 ),
+		HID_REPORT_COUNT( 7 ),
+		HID_REPORT_SIZE( 8 ),
+		HID_OUTPUT( 0x03 ),
+		HID_REPORT_COUNT( 6 ),
+		HID_REPORT_SIZE( 8 ),
+		HID_LOGICAL_MIN( 0 ),
+		HID_LOGICAL_MAX( 167 ),
+		HID_USAGE_PAGE( HID_USAGE_PAGE_KEYBOARD ),
+		HID_USAGE_MIN( 0x00 ),
+		HID_USAGE_MAX( 167 ),
+	HID_INPUT( 0 ),
+    HID_COLLECTION_END,
+};
+
+#ifdef UIAP_WEBHID
+// Vendor-specific HID for WebHID (EP3)
+// Input Report:  8 bytes UIAPduino → Web (via EP3 IN)
+// Feature Report: 16 bytes Web → UIAPduino (via EP0 SET_REPORT)
+static const uint8_t webhid_hid_desc[] = {
+	HID_USAGE_PAGE( 0xff ),            // Vendor defined
+	HID_USAGE     ( 0x01 ),
+	HID_COLLECTION( HID_COLLECTION_APPLICATION ),
+		// Input Report: 8 bytes (no report ID)
+		HID_REPORT_SIZE ( 8 ),
+		HID_REPORT_COUNT( 8 ),
+		HID_USAGE       ( 0x02 ),
+		HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
+		// Feature Report: 16 bytes (no report ID)
+		HID_REPORT_SIZE ( 8 ),
+		HID_REPORT_COUNT( 16 ),
+		HID_USAGE       ( 0x03 ),
+		HID_FEATURE     ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
+	HID_COLLECTION_END,
+};
+#endif // UIAP_WEBHID
+
+#ifdef UIAP_WEBHID
+static const uint8_t config_descriptor[] = {
+	// configuration descriptor (3 interfaces: Mouse + Keyboard + VendorHID)
+	9,
+	2,
+	0x54, 0x00,  // wTotalLength = 84 (9+25+25+25)
+	0x03,        // bNumInterfaces = 3
+	0x01,        // bConfigurationValue
+	0x00,        // iConfiguration
+	0x80,        // bmAttributes
+	0x64,        // bMaxPower (200mA)
+
+	// Interface 0: Mouse
+	9, 4, 0, 0, 1, 0x03, 0x01, 0x02, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(mouse_hid_desc), 0x00,
+	7, 0x05, 0x81, 0x03, 0x04, 0x00, 10,
+
+	// Interface 1: Keyboard
+	9, 4, 1, 0, 1, 0x03, 0x01, 0x01, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(keyboard_hid_desc), 0x00,
+	7, 0x05, 0x82, 0x03, 0x08, 0x00, 10,
+
+	// Interface 2: Vendor HID (WebHID) + EP3 IN
+	9, 4, 2, 0, 1, 0x03, 0x00, 0x00, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(webhid_hid_desc), 0x00,
+	7, 0x05, 0x83, 0x03, 0x08, 0x00, 10,
+};
+#else
+static const uint8_t config_descriptor[] = {
+	// configuration descriptor (2 interfaces: Mouse + Keyboard)
+	9,
+	2,
+	0x3b, 0x00,  // wTotalLength = 59
+	0x02,        // bNumInterfaces
+	0x01,        // bConfigurationValue
+	0x00,        // iConfiguration
+	0x80,        // bmAttributes
+	0x64,        // bMaxPower (200mA)
+
+	// Interface 0: Mouse
+	9, 4, 0, 0, 1, 0x03, 0x01, 0x02, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(mouse_hid_desc), 0x00,
+	7, 0x05, 0x81, 0x03, 0x04, 0x00, 10,
+
+	// Interface 1: Keyboard
+	9, 4, 1, 0, 1, 0x03, 0x01, 0x01, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(keyboard_hid_desc), 0x00,
+	7, 0x05, 0x82, 0x03, 0x08, 0x00, 10,
+};
+#endif
+
+#ifdef UIAP_WEBHID
+#define STR_MANUFACTURER u"UIAP"
+#define STR_PRODUCT      u"UIAPduino KBD+Mouse+Web"
+#define STR_SERIAL       u"WEBHID000"
+#else
+#define STR_MANUFACTURER u"UIAP"
+#define STR_PRODUCT      u"UIAPduino KBD+Mouse"
+#define STR_SERIAL       u"KBD000"
+#endif
+
+struct usb_string_descriptor_struct {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
+	uint16_t wString[];
+};
+const static struct usb_string_descriptor_struct string0 __attribute__((section(".rodata"))) = {
+	4, 3, {0x0409}
+};
+const static struct usb_string_descriptor_struct string1 __attribute__((section(".rodata"))) = {
+	sizeof(STR_MANUFACTURER), 3, STR_MANUFACTURER
+};
+const static struct usb_string_descriptor_struct string2 __attribute__((section(".rodata"))) = {
+	sizeof(STR_PRODUCT), 3, STR_PRODUCT
+};
+const static struct usb_string_descriptor_struct string3 __attribute__((section(".rodata"))) = {
+	sizeof(STR_SERIAL), 3, STR_SERIAL
+};
+
+const static struct descriptor_list_struct {
+	uint32_t	lIndexValue;
+	const uint8_t	*addr;
+	uint8_t		length;
+} descriptor_list[] = {
+	{0x00000100, device_descriptor,  sizeof(device_descriptor)},
+	{0x00000200, config_descriptor,  sizeof(config_descriptor)},
+	{0x00002200, mouse_hid_desc,     sizeof(mouse_hid_desc)},
+	{0x00012200, keyboard_hid_desc,  sizeof(keyboard_hid_desc)},
+#ifdef UIAP_WEBHID
+	{0x00022200, webhid_hid_desc,    sizeof(webhid_hid_desc)},
+#endif
+	{0x00000300, (const uint8_t *)&string0, 4},
+	{0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
+	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
+	{0x04090303, (const uint8_t *)&string3, sizeof(STR_SERIAL)}
+};
+#define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)))
+
+#endif // INSTANCE_DESCRIPTORS
+#endif // __ASSEMBLER__
+
+#else // !UIAP_COMPOSITE_HID
+// ============================================================
+// Terminal HID configuration (default)
+// ============================================================
+
 //Defines the number of endpoints for this device. (Always add one for EP0). For two EPs, this should be 3.
 #define ENDPOINTS 2
 
@@ -50,7 +305,7 @@ static const uint8_t device_descriptor[] = {
 	1, //Max number of configurations
 };
 
-static const uint8_t special_hid_desc[] = { 
+static const uint8_t special_hid_desc[] = {
 	HID_USAGE_PAGE ( 0xff ), // Vendor-defined page.
 	HID_USAGE      ( 0x00 ),
 	HID_REPORT_SIZE ( 8 ),
@@ -74,10 +329,10 @@ static const uint8_t config_descriptor[] = {
 	// configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
 	9, 					// bLength;
 	2,					// bDescriptorType;
-	0x22, 0x00,			// wTotalLength  	
+	0x22, 0x00,			// wTotalLength
 
 	//34, 0x00, //for just the one descriptor
-	
+
 	0x01,					// bNumInterfaces (Normally 1)
 	0x01,					// bConfigurationValue
 	0x00,					// iConfiguration
@@ -101,7 +356,7 @@ static const uint8_t config_descriptor[] = {
 	0x00,         //country code
 	0x01,         // Num descriptors
 	0x22,         // DescriptorType[0] (HID)
-	sizeof(special_hid_desc), 0x00, 
+	sizeof(special_hid_desc), 0x00,
 
 	7,            // endpoint descriptor (For endpoint 1)
 	0x05,         // Endpoint Descriptor (Must be 5)
@@ -156,13 +411,15 @@ const static struct descriptor_list_struct {
 
 	{0x00000300, (const uint8_t *)&string0, 4},
 	{0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
-	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},	
+	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
 	{0x04090303, (const uint8_t *)&string3, sizeof(STR_SERIAL)}
 };
 #define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)) )
 
 #endif // INSTANCE_DESCRIPTORS
 
-#endif
+#endif // __ASSEMBLER__
 
-#endif 
+#endif // UIAP_COMPOSITE_HID
+
+#endif // _USB_CONFIG_H

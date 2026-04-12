@@ -3,6 +3,8 @@
 
 #include "uiapusb.h"
 
+#ifndef UIAP_COMPOSITE_HID
+
 class HIDuiapClass {
 public:
     void begin(void)                          { uiapusb_begin(); }
@@ -13,4 +15,6 @@ public:
 
 extern HIDuiapClass HIDuiap;
 
-#endif
+#endif // UIAP_COMPOSITE_HID
+
+#endif // _HIDUIAP_CLASS_H

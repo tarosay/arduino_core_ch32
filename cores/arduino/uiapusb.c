@@ -56,6 +56,8 @@ static volatile uint8_t keyboard_report[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 // ============================================================
 // EP3 IN: UIAPduino → Web (8 bytes)
 static volatile uint8_t webhid_tx_buf[8] = {0};
+// EP3 TX: 新データがある時だけ送信するフラグ (main セット、ISR クリア)
+static volatile uint8_t webhid_tx_pending = 0;
 // Feature Report 受信: Web → UIAPduino (最大 16 bytes)
 static volatile uint8_t webhid_rx_buf[16];
 static volatile uint8_t webhid_rx_len  = 0;
@@ -90,8 +92,13 @@ void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad,
         usb_send_data((uint8_t *)keyboard_report, 8, 0, sendtok);
 #ifdef UIAP_WEBHID
     } else if (endp == 3) {
-        /* WebHID TX: UIAPduino → Web */
-        usb_send_data((uint8_t *)webhid_tx_buf, 8, 0, sendtok);
+        /* WebHID TX: 新データがある時だけ送信、それ以外は NAK */
+        if (webhid_tx_pending) {
+            usb_send_data((uint8_t *)webhid_tx_buf, 8, 0, sendtok);
+            webhid_tx_pending = 0;
+        } else {
+            usb_send_empty(sendtok);
+        }
 #endif
     } else {
         usb_send_empty(sendtok);
@@ -149,6 +156,7 @@ void uiapwebhid_send(const uint8_t *buf, uint8_t len)
     if (len > 8) len = 8;
     for (int i = 0; i < len; i++) webhid_tx_buf[i] = buf[i];
     for (int i = len; i < 8; i++) webhid_tx_buf[i] = 0;
+    webhid_tx_pending = 1;
 }
 
 uint8_t uiapwebhid_available(void)

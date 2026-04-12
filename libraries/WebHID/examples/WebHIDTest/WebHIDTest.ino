@@ -14,6 +14,9 @@
 
 #include <WebHID.h>
 
+// EP3 ポーリング間隔は 10ms。15ms 待てば確実に次のポーリングが来る。
+#define EP3_WAIT_MS  15
+
 uint8_t counter = 0;
 
 void setup() {
@@ -27,12 +30,13 @@ void loop() {
         uint8_t buf[16];
         uint8_t len = WebHID.recv(buf, sizeof(buf));
 
-        // 8 バイトずつキューに積む（send() 内部でキュー満杯なら待つ）
         uint8_t sent = 0;
         while (sent < len) {
             uint8_t chunk = (len - sent > 8) ? 8 : (len - sent);
             WebHID.send(buf + sent, chunk);
             sent += chunk;
+            // 次のチャンクを送る前に EP3 ポーリングを待つ
+            if (sent < len) delay(EP3_WAIT_MS);
         }
     }
 

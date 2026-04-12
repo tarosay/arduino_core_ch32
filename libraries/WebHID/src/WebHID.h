@@ -30,6 +30,9 @@ public:
         uiapwebhid_send(buf, 8);
     }
 
+    // 前の送信がまだ完了していないか
+    bool busy() { return uiapwebhid_tx_busy() != 0; }
+
     // Web からデータが届いているか (Feature Report)
     uint8_t available() { return uiapwebhid_available(); }
 

@@ -159,6 +159,11 @@ void uiapwebhid_send(const uint8_t *buf, uint8_t len)
     webhid_tx_pending = 1;
 }
 
+uint8_t uiapwebhid_tx_busy(void)
+{
+    return webhid_tx_pending;
+}
+
 uint8_t uiapwebhid_available(void)
 {
     return webhid_rx_ready;

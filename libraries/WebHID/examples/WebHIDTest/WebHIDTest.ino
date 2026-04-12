@@ -27,11 +27,9 @@ void loop() {
         uint8_t buf[16];
         uint8_t len = WebHID.recv(buf, sizeof(buf));
 
-        // 8 バイトずつ分割して送信
+        // 8 バイトずつキューに積む（send() 内部でキュー満杯なら待つ）
         uint8_t sent = 0;
         while (sent < len) {
-            // 前の送信が完了するまで待つ
-            while (WebHID.busy()) {}
             uint8_t chunk = (len - sent > 8) ? 8 : (len - sent);
             WebHID.send(buf + sent, chunk);
             sent += chunk;
@@ -42,9 +40,6 @@ void loop() {
     static uint32_t last = 0;
     if (millis() - last >= 1000) {
         last = millis();
-        // 前の送信が完了していれば送る
-        if (!WebHID.busy()) {
-            WebHID.send(counter++, 0, 0, 0, 0, 0, 0, 0);
-        }
+        WebHID.send(counter++, 0, 0, 0, 0, 0, 0, 0);
     }
 }

@@ -54,10 +54,11 @@ static volatile uint8_t keyboard_report[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 // ============================================================
 // WebHID バッファ
 // ============================================================
-// EP3 IN: UIAPduino → Web (8 bytes)
-static volatile uint8_t webhid_tx_buf[8] = {0};
-// EP3 TX: 新データがある時だけ送信するフラグ (main セット、ISR クリア)
-static volatile uint8_t webhid_tx_pending = 0;
+// EP3 IN 送信キュー (2スロット × 8バイト)
+// main がエンキュー、ISR がデキューして1スロットずつ送信する
+static volatile uint8_t webhid_tx_queue[2][8];
+static volatile uint8_t webhid_tx_count = 0;  // キュー内のスロット数 (0〜2)
+static volatile uint8_t webhid_tx_head  = 0;  // 次に送るスロット番号 (0 or 1)
 // Feature Report 受信: Web → UIAPduino (最大 16 bytes)
 static volatile uint8_t webhid_rx_buf[16];
 static volatile uint8_t webhid_rx_len  = 0;
@@ -92,10 +93,11 @@ void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad,
         usb_send_data((uint8_t *)keyboard_report, 8, 0, sendtok);
 #ifdef UIAP_WEBHID
     } else if (endp == 3) {
-        /* WebHID TX: 新データがある時だけ送信、それ以外は NAK */
-        if (webhid_tx_pending) {
-            usb_send_data((uint8_t *)webhid_tx_buf, 8, 0, sendtok);
-            webhid_tx_pending = 0;
+        /* WebHID TX: キューにデータがあれば送信、なければ NAK */
+        if (webhid_tx_count > 0) {
+            usb_send_data((uint8_t *)webhid_tx_queue[webhid_tx_head], 8, 0, sendtok);
+            webhid_tx_head  = (webhid_tx_head + 1) & 1;  /* 0 or 1 */
+            webhid_tx_count--;
         } else {
             usb_send_empty(sendtok);
         }
@@ -153,15 +155,18 @@ void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint,
 
 void uiapwebhid_send(const uint8_t *buf, uint8_t len)
 {
+    /* キューが満杯なら待つ (最大2スロット) */
+    while (webhid_tx_count >= 2) {}
     if (len > 8) len = 8;
-    for (int i = 0; i < len; i++) webhid_tx_buf[i] = buf[i];
-    for (int i = len; i < 8; i++) webhid_tx_buf[i] = 0;
-    webhid_tx_pending = 1;
+    uint8_t slot = (webhid_tx_head + webhid_tx_count) & 1;
+    for (int i = 0; i < len; i++) webhid_tx_queue[slot][i] = buf[i];
+    for (int i = len; i < 8;  i++) webhid_tx_queue[slot][i] = 0;
+    webhid_tx_count++;  /* ISR から見えるようにカウントを最後に更新 */
 }
 
 uint8_t uiapwebhid_tx_busy(void)
 {
-    return webhid_tx_pending;
+    return (webhid_tx_count > 0) ? 1 : 0;
 }
 
 uint8_t uiapwebhid_available(void)

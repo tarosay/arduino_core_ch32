@@ -64,6 +64,9 @@ static volatile uint8_t webhid_rx_len  = 0;
 static volatile uint8_t webhid_rx_ready = 0;
 // SET_REPORT が来たことを示すフラグ (ISR セット、main クリア)
 static volatile uint8_t webhid_set_report_pending = 0;
+// マルチパケット対応: EP0 max packet = 8 bytes なので 16 bytes は 2 分割で届く
+static volatile uint8_t webhid_rx_offset       = 0;
+static volatile uint8_t webhid_rx_expected_len = 0;
 #endif // UIAP_WEBHID
 
 /*
@@ -114,8 +117,10 @@ void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen,
                                       uint32_t lValueLSBIndexMSB)
 {
     (void)e;
-    (void)reqLen;
     (void)lValueLSBIndexMSB;
+    /* reqLen = wLength (期待するデータ長) を保存し、オフセットをリセット */
+    webhid_rx_expected_len = (reqLen > 16) ? 16 : (uint8_t)reqLen;
+    webhid_rx_offset       = 0;
     webhid_set_report_pending = 1;
 }
 
@@ -141,11 +146,22 @@ void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint,
     (void)e; (void)ist;
     if (current_endpoint == 0 && webhid_set_report_pending)
     {
-        webhid_set_report_pending = 0;
-        uint8_t copy_len = (len > 16) ? 16 : (uint8_t)len;
-        for (int i = 0; i < copy_len; i++) webhid_rx_buf[i] = data[i];
-        webhid_rx_len   = copy_len;
-        webhid_rx_ready = 1;
+        /* EP0 max packet = 8 bytes のため、16 byte Feature Report は
+         * 2 回に分けて届く。オフセットを使って全パケットを集約する。 */
+        uint8_t space = webhid_rx_expected_len - webhid_rx_offset;
+        uint8_t copy_len = ((uint8_t)len > space) ? space : (uint8_t)len;
+        for (int i = 0; i < copy_len; i++)
+            webhid_rx_buf[webhid_rx_offset + i] = data[i];
+        webhid_rx_offset += copy_len;
+
+        if (webhid_rx_offset >= webhid_rx_expected_len)
+        {
+            /* 全データ受信完了 */
+            webhid_set_report_pending = 0;
+            webhid_rx_len   = webhid_rx_expected_len;
+            webhid_rx_ready = 1;
+        }
+        /* 未完了の場合は webhid_set_report_pending を維持し次パケットを待つ */
     }
 }
 

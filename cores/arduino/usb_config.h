@@ -133,7 +133,7 @@ static const uint8_t keyboard_hid_desc[] = {
 // Input Report:  8 bytes UIAPduino → Web (via EP3 IN)
 // Feature Report: 16 bytes Web → UIAPduino (via EP0 SET_REPORT)
 static const uint8_t webhid_hid_desc[] = {
-	HID_USAGE_PAGE( 0xff ),            // Vendor defined
+	0x06, 0x00, 0xFF,                  // Usage Page (Vendor 0xFF00) 2-byte encoding
 	HID_USAGE     ( 0x01 ),
 	HID_COLLECTION( HID_COLLECTION_APPLICATION ),
 		// Input Report: 8 bytes (no report ID)

@@ -7,14 +7,28 @@ Arduino IDE で UIAPduino を使うための Arduino コアです。
 
 ## ボードについて
 
-**UIAPduino (HID ProMicro CH32V003)**
+### HID ProMicro CH32V003（ターミナル HID）
+
+PC と USB HID 経由でデータを送受信する汎用ボードです。
 
 - MCU: WCH CH32V003F4 (RISC-V, 48MHz)
 - フラッシュ: 16KB / RAM: 2KB
 - USB: Type-C（HID デバイスとして動作）
 - ピン: 15本の GPIO をヘッダーに引き出し
 
-### ピン配置
+### HID ProMicro CH32V003 KBD+Mouse（キーボード＋マウス HID）
+
+USB キーボード・マウスとして PC を操作するボードです。  
+**Board Version Select** メニューで機能を選択できます。
+
+| Board Version | 機能 |
+|--------------|------|
+| V1.4 | キーボード (EP2) ＋ マウス (EP1) |
+| V1.4 + WebHID (EP3) | キーボード ＋ マウス ＋ WebHID 双方向通信 (EP3) |
+
+---
+
+## ピン配置
 
 | Arduino番号 | ポート | 備考 |
 |:-----------:|:------:|------|
@@ -51,10 +65,10 @@ https://github.com/tarosay/board_manager_files/raw/main/package_ch32v_index.json
 
 ---
 
-## HID API
+## HID API（ターミナルモード）
 
-USB 経由でホスト PC とデータを送受信します。  
-`Serial.print()` の代わりに `HIDuiap` オブジェクトを使います。
+`HID ProMicro CH32V003` で使用します。  
+USB 経由でホスト PC とデータを送受信します。
 
 ```cpp
 void setup() {
@@ -74,6 +88,107 @@ void loop() {
 | `HIDuiap.write(buf, len)` | データを送信する |
 | `HIDuiap.read(buf, maxlen)` | データを受信する |
 | `HIDuiap.available()` | 受信データのバイト数を返す |
+
+---
+
+## Keyboard / Mouse ライブラリ（KBD+Mouse モード）
+
+`HID ProMicro CH32V003 KBD+Mouse` で使用します。  
+ボード選択: `Tools > Board > HID ProMicro CH32V003 KBD+Mouse`  
+バージョン選択: `Tools > Board Version Select > V1.4`
+
+```cpp
+#include <Keyboard.h>
+#include <Mouse.h>
+
+void setup() {
+  Keyboard.begin();
+  Mouse.begin();
+  delay(2000);
+}
+
+void loop() {
+  Keyboard.print("Hello");   // キー入力
+  Mouse.move(10, 0);         // マウスを右に10移動
+  delay(1000);
+}
+```
+
+### Keyboard API
+
+| メソッド | 説明 |
+|---------|------|
+| `Keyboard.begin()` | キーボードを開始する |
+| `Keyboard.print(str)` | 文字列をタイプする |
+| `Keyboard.press(key)` | キーを押す |
+| `Keyboard.release(key)` | キーを離す |
+| `Keyboard.releaseAll()` | 全キーを離す |
+
+### Mouse API
+
+| メソッド | 説明 |
+|---------|------|
+| `Mouse.begin()` | マウスを開始する |
+| `Mouse.move(x, y, wheel)` | 相対移動（各 -127〜127） |
+| `Mouse.press(btn)` | ボタンを押す |
+| `Mouse.release(btn)` | ボタンを離す |
+| `Mouse.click(btn)` | クリック |
+
+---
+
+## WebHID ライブラリ（KBD+Mouse + WebHID モード）
+
+`HID ProMicro CH32V003 KBD+Mouse` + `V1.4 + WebHID (EP3)` で使用します。  
+Chrome / Edge の **WebHID API** を使って、Web ブラウザと UIAPduino が双方向通信できます。  
+キーボード・マウス機能と同時に使用可能です。
+
+> **注意:** WebHID は Chrome / Edge のみ対応です。キーボード・マウス HID インターフェースは  
+> ブラウザのセキュリティ制限で直接アクセスできないため、ベンダー定義 HID (EP3) を使用します。
+
+```cpp
+#include <WebHID.h>
+
+void setup() {
+  WebHID.begin();
+  delay(2000);
+}
+
+void loop() {
+  // Web からデータを受信してエコーバック
+  if (WebHID.available()) {
+    uint8_t buf[16];
+    uint8_t len = WebHID.recv(buf, sizeof(buf));
+    WebHID.send(buf, len);
+  }
+
+  // 1秒ごとにカウンタを送信
+  static uint32_t last = 0;
+  static uint8_t counter = 0;
+  if (millis() - last >= 1000) {
+    last = millis();
+    WebHID.send(counter++, 0, 0, 0, 0, 0, 0, 0);
+  }
+}
+```
+
+### WebHID API
+
+| メソッド | 説明 |
+|---------|------|
+| `WebHID.begin()` | USB を開始する |
+| `WebHID.send(buf, len)` | EP3 Input Report で Web へ送信（最大 8 バイト） |
+| `WebHID.send(b0,b1,...,b7)` | 個別バイト指定で送信（最大 8 バイト） |
+| `WebHID.available()` | Web からのデータが届いているか |
+| `WebHID.recv(buf, maxlen)` | Feature Report を受信（最大 16 バイト） |
+
+### USB エンドポイント構成（V1.4 + WebHID）
+
+| EP | 方向 | 用途 |
+|----|------|------|
+| EP1 IN | UIAPduino → PC | マウスレポート |
+| EP2 IN | UIAPduino → PC | キーボードレポート |
+| EP3 IN | UIAPduino → Web | WebHID Input Report (8 bytes) |
+| EP0 Feature | Web → UIAPduino | WebHID Feature Report (最大 16 bytes) |
 
 ---
 
@@ -106,6 +221,8 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## サンプルスケッチ
 
+### HID ProMicro CH32V003（ターミナル HID）
+
 `ファイル` → `スケッチ例` → `HID` から開けます。
 
 | スケッチ | 内容 |
@@ -118,6 +235,15 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | HidMicrosTicker | `micros()` の値を定期送信 |
 | HidAdcMonitor | ADC 値を定期送信 |
 | PwmAndToneTest | PWM / Tone の動作確認 |
+
+### HID ProMicro CH32V003 KBD+Mouse
+
+`ファイル` → `スケッチ例` → `Keyboard` / `Mouse` / `WebHID` から開けます。
+
+| ライブラリ | スケッチ | 内容 |
+|-----------|---------|------|
+| Keyboard / Mouse | KbdMouseTest | キー入力とマウス移動のサンプル |
+| WebHID | WebHIDTest | EP3 エコーバック ＋ 1秒ごとカウンタ送信 |
 
 ---
 

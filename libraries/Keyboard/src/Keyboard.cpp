@@ -182,9 +182,14 @@ size_t KeyboardClass::write(uint8_t key)
 
     /* release */
     releaseAll();
-    delay(50);  /* ホストが key-up を処理するまで待つ。
-                 * 矢印・BackSpace・Enter・Home など特殊キーは
-                 * 50ms 未満だと次の key-press を取りこぼす。 */
+    delay(20);  /* ホストが key-up を認識するのに 1 ポーリング（10ms）あれば
+                 * 十分。20ms は安全マージン込みの最小値。
+                 *
+                 * 矢印・BackSpace・Enter・Home などの特殊キーは、スケッチ側で
+                 * Keyboard.write(KEY_XXX); delay(50); のように追加の待機を
+                 * 入れることで対応する。ここを 50ms にすると通常の ASCII 文字
+                 * でも 1文字あたり 70ms かかり "Hello UIAPduino World."（22文字）
+                 * だけで 2 秒以上かかってしまう。 */
     return 1;
 }
 

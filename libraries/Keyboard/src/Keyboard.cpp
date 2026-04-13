@@ -173,11 +173,13 @@ size_t KeyboardClass::write(uint8_t key)
     memset(_keys, 0, 6);
     _keys[0] = hid;
     _sendReport();
-    delay(10);
+    delay(10);  /* EP2 ポーリング間隔 10ms を確実に超える */
 
     /* release */
     releaseAll();
-    delay(5);
+    delay(50);  /* USB Low Speed ホストが key-up を処理するまで待つ。
+                 * 5ms では矢印・BackSpace・Enter などの特殊キーが
+                 * 取りこぼされることがあるため 50ms に変更。 */
     return 1;
 }
 

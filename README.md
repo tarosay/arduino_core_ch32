@@ -120,9 +120,47 @@ void loop() {
 |---------|------|
 | `Keyboard.begin()` | キーボードを開始する |
 | `Keyboard.print(str)` | 文字列をタイプする |
-| `Keyboard.press(key)` | キーを押す |
+| `Keyboard.println(str)` | 文字列をタイプして改行する |
+| `Keyboard.write(key)` | 1キーを押して離す（特殊キーに推奨） |
+| `Keyboard.press(key)` | キーを押したままにする |
 | `Keyboard.release(key)` | キーを離す |
 | `Keyboard.releaseAll()` | 全キーを離す |
+
+#### 特殊キー定数
+
+`KEY_LEFT_ARROW` / `KEY_RIGHT_ARROW` / `KEY_UP_ARROW` / `KEY_DOWN_ARROW` /
+`KEY_BACKSPACE` / `KEY_DELETE` / `KEY_RETURN` / `KEY_HOME` / `KEY_END` /
+`KEY_PAGE_UP` / `KEY_PAGE_DOWN` / `KEY_ESC` / `KEY_TAB` /
+`KEY_F1` 〜 `KEY_F12` など
+
+#### 特殊キーを使う場合の注意
+
+USB Low Speed のポーリング間隔（EP2: 10ms）の非同期性により、
+矢印・BackSpace・Enter・Home などの特殊キーは **`Keyboard.write()`** を使い、
+さらに呼び出しの後に **`delay(50)`** を入れると取りこぼしなく動作します。
+
+```cpp
+// ✅ 推奨: write() + delay(50)
+for (int i = 0; i < 6; i++) {
+  Keyboard.write(KEY_LEFT_ARROW);
+  delay(50);
+}
+
+// ❌ 非推奨: press() + releaseAll() はポーリングを逃して無効になることがある
+Keyboard.press(KEY_LEFT_ARROW);
+Keyboard.releaseAll();
+```
+
+#### `Keyboard.write()` のタイミング
+
+```
+press → delay(20ms) → release → delay(20ms) → 次のキーへ
+```
+
+- 20ms の press 待機で EP2 ポーリングを 1〜2 回確実に通過させる
+- 20ms の release 待機でホストが key-up を認識する
+- 1文字あたり約 40ms（"Hello UIAPduino World." 22文字 ≈ 0.9 秒）
+- 特殊キー後のスケッチ側 `delay(50)` と合わせると合計約 90ms の余裕
 
 ### Mouse API
 
@@ -243,7 +281,11 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | ライブラリ | スケッチ | 内容 |
 |-----------|---------|------|
 | Keyboard / Mouse | KbdMouseTest | キー入力とマウス移動のサンプル |
+| Keyboard | KeyboardPractice | キーボード HID 練習（Step ごとにコメントを外して書き込む） |
+| Keyboard | KeyboardSwitch | キーボード HID 練習（switch 文で全 Step を 1 回の書き込みで切り替え） |
 | WebHID | WebHIDTest | EP3 エコーバック ＋ 1秒ごとカウンタ送信 |
+
+> **KeyboardPractice / KeyboardSwitch** は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) の練習ページと連携して使います。
 
 ---
 

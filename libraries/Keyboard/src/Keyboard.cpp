@@ -173,13 +173,18 @@ size_t KeyboardClass::write(uint8_t key)
     memset(_keys, 0, 6);
     _keys[0] = hid;
     _sendReport();
-    delay(10);  /* EP2 ポーリング間隔 10ms を確実に超える */
+    delay(20);  /* EP2 ポーリング間隔は 10ms。ポーリングのタイミングは
+                 * スケッチの実行と非同期なので、_sendReport() 直後に
+                 * ポーリングを逃す恐れがある。20ms 待てば最悪ケースでも
+                 * 必ず 1〜2 回のポーリングが key_press を拾う。
+                 * 10ms のままだと "ll" ">>>" のような連続する同一文字で
+                 * 1文字欠けることがあった。 */
 
     /* release */
     releaseAll();
-    delay(50);  /* USB Low Speed ホストが key-up を処理するまで待つ。
-                 * 5ms では矢印・BackSpace・Enter などの特殊キーが
-                 * 取りこぼされることがあるため 50ms に変更。 */
+    delay(50);  /* ホストが key-up を処理するまで待つ。
+                 * 矢印・BackSpace・Enter・Home など特殊キーは
+                 * 50ms 未満だと次の key-press を取りこぼす。 */
     return 1;
 }
 

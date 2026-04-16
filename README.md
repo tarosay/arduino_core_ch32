@@ -168,9 +168,27 @@ press → delay(20ms) → release → delay(20ms) → 次のキーへ
 |---------|------|
 | `Mouse.begin()` | マウスを開始する |
 | `Mouse.move(x, y, wheel)` | 相対移動（各 -127〜127） |
+| `Mouse.moveLarge(dx, dy, steps)` | 大きな相対移動（-127〜127 の範囲を超える移動を steps 分割で送信） |
 | `Mouse.press(btn)` | ボタンを押す |
 | `Mouse.release(btn)` | ボタンを離す |
 | `Mouse.click(btn)` | クリック |
+
+#### `Mouse.moveLarge()` の使い方
+
+`move()` の 1 回あたりの最大移動量は **-127〜127** に制限されています（USB HID の int8_t 制限）。  
+それ以上の距離を移動させたい場合は `moveLarge()` を使います。
+
+```cpp
+// 500px 右・300px 上を 20 ステップに分割して移動（1ステップ = 25px 右・15px 上）
+Mouse.moveLarge(500, -300, 20);
+
+// steps を省略すると 10 分割（デフォルト）
+Mouse.moveLarge(200, 100);
+```
+
+- `steps` は分割数（デフォルト 10）。小さいほど動きが速く・大きいほど滑らか
+- 各ステップ間に `delay(10)` を挿入し、EP1 ポーリング（10ms）に確実に乗せる
+- `dx` / `dy` は int 型なので任意の大きさを指定可能
 
 ---
 

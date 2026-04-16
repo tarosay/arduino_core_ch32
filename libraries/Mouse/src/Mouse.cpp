@@ -26,23 +26,23 @@ void MouseClass::move(int x, int y, int wheel)
     uiapkbd_mouse_set(_buttons, clamp8(x), clamp8(y), clamp8(wheel));
 }
 
-void MouseClass::moveLarge(int dx, int dy, int steps)
+void MouseClass::moveLarge(int x, int y, int wheel, int steps)
 {
     if (steps < 1) steps = 1;
 
     /* 1ステップあたりの移動量。0 になる場合は最小 1px（移動方向に合わせた符号）*/
-    int bx = dx / steps;
-    int by = dy / steps;
-    if (bx == 0 && dx != 0) bx = (dx > 0) ? 1 : -1;
-    if (by == 0 && dy != 0) by = (dy > 0) ? 1 : -1;
+    int bx = x / steps;
+    int by = y / steps;
+    if (bx == 0 && x != 0) bx = (x > 0) ? 1 : -1;
+    if (by == 0 && y != 0) by = (y > 0) ? 1 : -1;
 
-    while (dx != 0 || dy != 0) {
+    while (x != 0 || y != 0) {
         /* 残量が 1ステップ分より少なければ残量をそのまま送る */
-        int mx = (dx == 0) ? 0 : ((abs(dx) <= abs(bx)) ? dx : bx);
-        int my = (dy == 0) ? 0 : ((abs(dy) <= abs(by)) ? dy : by);
-        move(mx, my);
-        dx -= mx;
-        dy -= my;
+        int mx = (x == 0) ? 0 : ((abs(x) <= abs(bx)) ? x : bx);
+        int my = (y == 0) ? 0 : ((abs(y) <= abs(by)) ? y : by);
+        move(mx, my, wheel);
+        x -= mx;
+        y -= my;
         delay(10);  /* EP1 ポーリング間隔（10ms）に合わせて確実に受け取らせる */
     }
 }

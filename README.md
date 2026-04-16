@@ -168,7 +168,7 @@ press → delay(20ms) → release → delay(20ms) → 次のキーへ
 |---------|------|
 | `Mouse.begin()` | マウスを開始する |
 | `Mouse.move(x, y, wheel)` | 相対移動（各 -127〜127） |
-| `Mouse.moveLarge(dx, dy, steps)` | 大きな相対移動（-127〜127 の範囲を超える移動を steps 分割で送信） |
+| `Mouse.moveLarge(x, y, wheel, steps)` | 大きな相対移動（-127〜127 の範囲を超える移動を steps 分割で送信） |
 | `Mouse.press(btn)` | ボタンを押す |
 | `Mouse.release(btn)` | ボタンを離す |
 | `Mouse.click(btn)` | クリック |
@@ -180,9 +180,9 @@ press → delay(20ms) → release → delay(20ms) → 次のキーへ
 
 ```cpp
 // 500px 右・300px 上を 20 ステップに分割して移動（1ステップ = 25px 右・15px 上）
-Mouse.moveLarge(500, -300, 20);
+Mouse.moveLarge(500, -300, 0, 20);
 
-// steps を省略すると 10 分割（デフォルト）
+// wheel・steps を省略するとデフォルト（wheel=0, steps=10）
 Mouse.moveLarge(200, 100);
 ```
 

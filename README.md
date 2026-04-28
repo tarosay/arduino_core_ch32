@@ -248,6 +248,44 @@ void loop() {
 
 ---
 
+## Tone ライブラリ
+
+`tone()` / `noTone()` で圧電ブザーや小型スピーカーに音を鳴らせます。  
+`TIM_MODULE_ENABLED` が有効な場合、ピンにタイマーチャネルが割り当てられていれば **ハードウェア PWM** で動作します。  
+タイマーチャネルがないピンはソフトウェアビットバンフォールバックになります。
+
+**接続例（KBD+Mouse ボード）**
+```
+A2 (PC4 / TIM1_CH4) --- ブザー(+) --- GND
+```
+
+```cpp
+#define BUZZER_PIN A2
+
+void setup() {
+  pinMode(BUZZER_PIN, OUTPUT);
+  tone(BUZZER_PIN, 440);   // 440 Hz でノンブロッキング再生開始
+}
+
+void loop() {
+  delay(1200);
+  // noTone(BUZZER_PIN);  // 停止したい場合
+}
+```
+
+### Tone API
+
+| 関数 | 説明 |
+|------|------|
+| `tone(pin, freq)` | 指定周波数で再生開始（ノンブロッキング、`noTone()` まで鳴り続ける） |
+| `tone(pin, freq, duration)` | `duration` ms 鳴らして自動停止（CPU をブロック） |
+| `noTone(pin)` | 再生を停止してピンを LOW に戻す |
+
+> **注意:** `duration` を指定した場合、`tone()` は内部で `delay(duration)` を実行します。  
+> `duration` なし（`tone(pin, freq)`）はハードウェアタイマーが自律動作するためノンブロッキングです。
+
+---
+
 ## コアの独自改良点
 
 ### `pinDisconnectDebug(uint32_t pin)`
@@ -302,6 +340,9 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | Keyboard | KeyboardPractice | キーボード HID 練習（Step ごとにコメントを外して書き込む） |
 | Keyboard | KeyboardSwitch | キーボード HID 練習（switch 文で全 Step を 1 回の書き込みで切り替え） |
 | WebHID | WebHIDTest | EP3 エコーバック ＋ 1秒ごとカウンタ送信 |
+| Tone | ToneBasic | 440 Hz をノンブロッキングで鳴らし続ける基本サンプル |
+| Tone | ToneDuration | ドレミスケールを `tone(pin, freq, duration)` で順番に演奏 |
+| Tone | ToneNoTone | `tone()` → `noTone()` を繰り返す停止・再開サンプル |
 
 > **KeyboardPractice / KeyboardSwitch** は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) の練習ページと連携して使います。
 

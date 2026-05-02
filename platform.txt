@@ -34,7 +34,7 @@ compiler.libraries.ldflags=
 
 #"@{build.opt.path}" {build.flags.optimize}  {compiler.warning_flags} {build.flags.debug} -MP -MF
 
-compiler.extra_flags=-march={build.march} -mabi={build.mabi} -msmall-data-limit=8 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -flto
+compiler.extra_flags=-march={build.march} -mabi={build.mabi} -msmall-data-limit=8 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common
 
 compiler.S.flags={compiler.extra_flags} -x assembler-with-cpp {build.flags.clock} "-I{build.system.path}/{build.series}/SRC/Startup/" "-I{build.core.path}/ch32/"
 
@@ -104,6 +104,8 @@ build.flags.clock=
 build.flags.optimize=
 build.flags.debug=
 build.flags.ldspecs=
+build.flags.serial=
+build.flags.usb=
 build.flash_offset=0
 
 # Pre and post build hooks
@@ -120,13 +122,13 @@ build.flash_offset=0
 # ---------------------
 
 ## Compile c files
-recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {build.info.flags} {compiler.c.extra_flags} {build.extra_flags} {includes}  -o "{object_file}" -c "{source_file}"  
+recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {build.info.flags} {compiler.c.extra_flags} {build.extra_flags} {build.flags.usb} {build.flags.serial} {includes}  -o "{object_file}" -c "{source_file}"
 
 ## Compile c++ files
-recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {build.info.flags} {compiler.cpp.extra_flags} {build.extra_flags} {includes} -o "{object_file}" -c "{source_file}"  
+recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {build.info.flags} {compiler.cpp.extra_flags} {build.extra_flags} {build.flags.usb} {build.flags.serial} {includes} -o "{object_file}" -c "{source_file}"
 
 ## Compile S files
-recipe.S.o.pattern="{compiler.path}{compiler.S.cmd}" {compiler.S.flags} {build.info.flags} {compiler.S.extra_flags} {build.extra_flags} -o "{object_file}" -c "{source_file}"
+recipe.S.o.pattern="{compiler.path}{compiler.S.cmd}" {compiler.S.flags} {build.info.flags} {compiler.S.extra_flags} {build.extra_flags} {build.flags.usb} {build.flags.serial} -o "{object_file}" -c "{source_file}"
 
 ## Create archives
 recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} {compiler.ar.extra_flags} "{archive_file_path}" "{object_file}"

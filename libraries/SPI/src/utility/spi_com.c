@@ -140,7 +140,28 @@ void spi_init(spi_t *obj, uint32_t speed, spi_mode_e mode, uint8_t msb)
     SPI_TypeDef *spi_miso = pinmap_peripheral(obj->pin_miso, PinMap_SPI_MISO);
     SPI_TypeDef *spi_sclk = pinmap_peripheral(obj->pin_sclk, PinMap_SPI_SCLK);
     SPI_TypeDef *spi_ssel = pinmap_peripheral(obj->pin_ssel, PinMap_SPI_SSEL);
-  
+
+    /* CH32V00x / CH32VM00X: only one SPI peripheral (SPI1).
+     * If pinmap_peripheral() cannot find the pins (returns NP), configure the
+     * SPI1 GPIO lines directly and force SPI1, so that spi_init() can proceed.
+     * This recovers from cases where PinName encoding mismatches prevent the
+     * table lookup from matching despite the pins being correct. */
+    bool gpio_configured_manually = false;
+#if defined(CH32V00x) || defined(CH32VM00X) || defined(CH32V003)
+    if (spi_mosi == NP || spi_miso == NP || spi_sclk == NP) {
+      spi_mosi = spi_miso = spi_sclk = SPI1;
+      /* Enable GPIOC (bit 4) and SPI1 (bit 12) APB2 clocks */
+      RCC->APB2PCENR |= (1u << 4) | (1u << 12);
+      /* PC5=SCK : AF push-pull 50 MHz → nibble 0xB at CFGLR[23:20]
+         PC6=MOSI: AF push-pull 50 MHz → nibble 0xB at CFGLR[27:24]
+         PC7=MISO: input with pull    → nibble 0x8 at CFGLR[31:28] */
+      GPIOC->CFGLR = (GPIOC->CFGLR & ~((0xFu<<20)|(0xFu<<24)|(0xFu<<28)))
+                   | (0xBu<<20) | (0xBu<<24) | (0x8u<<28);
+      GPIOC->OUTDR |= (1u<<7);  /* pull-up on PC7 (MISO) */
+      gpio_configured_manually = true;
+    }
+#endif
+
     /* Pins MOSI/MISO/SCLK must not be NP. ssel can be NP. */
     if (spi_mosi == NP || spi_miso == NP || spi_sclk == NP) {
       core_debug("ERROR: at least one SPI pin has no peripheral\n");
@@ -228,11 +249,14 @@ void spi_init(spi_t *obj, uint32_t speed, spi_mode_e mode, uint8_t msb)
     handle->Init.SPI_FirstBit    = SPI_FirstBit_MSB;
   }
 
-    /* Configure SPI GPIO pins */
-    pinmap_pinout(obj->pin_mosi, PinMap_SPI_MOSI);
-    pinmap_pinout(obj->pin_miso, PinMap_SPI_MISO);
-    pinmap_pinout(obj->pin_sclk, PinMap_SPI_SCLK);
-    pinmap_pinout(obj->pin_ssel, PinMap_SPI_SSEL);
+    /* Configure SPI GPIO pins (skipped when the CH32V00x direct-init path
+     * already configured the pins to avoid Error_Handler() on lookup failure) */
+    if (!gpio_configured_manually) {
+      pinmap_pinout(obj->pin_mosi, PinMap_SPI_MOSI);
+      pinmap_pinout(obj->pin_miso, PinMap_SPI_MISO);
+      pinmap_pinout(obj->pin_sclk, PinMap_SPI_SCLK);
+      pinmap_pinout(obj->pin_ssel, PinMap_SPI_SSEL);
+    }
 
 
 #if defined SPI1_BASE
@@ -281,7 +305,13 @@ void spi_init(spi_t *obj, uint32_t speed, spi_mode_e mode, uint8_t msb)
   }
 #endif
   SPI_Init( handle->Instance, &handle->Init );
-  
+
+  /* SSM=1 (software NSS) + Master mode: SSI must be 1 to prevent MODF.
+   * Without SSI=1, MODF fires immediately on SPI_Cmd(ENABLE) and clears SPE. */
+  if (handle->Init.SPI_NSS == SPI_NSS_Soft && handle->Init.SPI_Mode == SPI_Mode_Master) {
+    SPI_NSSInternalSoftwareConfig(handle->Instance, SPI_NSSInternalSoft_Set);
+  }
+
   /* In order to set correctly the SPI polarity we need to enable the peripheral */
   SPI_Cmd( handle->Instance, ENABLE );
 }

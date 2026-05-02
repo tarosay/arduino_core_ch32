@@ -35,3 +35,8 @@ void __cxa_deleted_virtual(void) {
     ;
 }
 
+// std::function が -fno-exceptions 環境で要求するスタブ
+namespace std {
+  void __throw_bad_function_call() { while (1); }
+}
+

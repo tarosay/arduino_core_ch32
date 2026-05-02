@@ -1,7 +1,121 @@
 #ifndef _USB_CONFIG_H
 #define _USB_CONFIG_H
 
-#ifdef UIAP_COMPOSITE_HID
+#if defined(UIAP_WEBHID_ONLY) \
+ || (!defined(UIAP_COMPOSITE_HID) && !defined(UIAP_NO_USB) && !defined(UIAP_USB_TERMINAL))
+// ============================================================
+// WebHID-only configuration (EP1 IN, no KBD/Mouse)  ← DEFAULT
+// ============================================================
+#define ENDPOINTS 2
+#define RV003USB_HANDLE_USER_DATA  1
+#define RV003USB_HID_FEATURES      1
+
+#define USB_PORT D
+#define USB_PIN_DP 3
+#define USB_PIN_DM 4
+
+#define RV003USB_DEBUG_TIMING      0
+#define RV003USB_OPTIMIZE_FLASH    1
+#define RV003USB_EVENT_DEBUGGING   0
+#define RV003USB_HANDLE_IN_REQUEST 1
+#define RV003USB_OTHER_CONTROL     0
+#define RV003USB_USB_TERMINAL      0
+
+#define RV003_ADD_EXTI_MASK  0xE7
+#define RV003_ADD_EXTI_HANDLER \
+	sw ra, 56(sp); sw t0, 60(sp); sw t1, 64(sp); sw t2, 68(sp); \
+	call rv003usb_exti_dispatch; \
+	lw t2, 68(sp); lw t1, 64(sp); lw t0, 60(sp); lw ra, 56(sp);
+
+#ifndef __ASSEMBLER__
+
+#include <tinyusb_hid.h>
+
+#ifdef INSTANCE_DESCRIPTORS
+
+static const uint8_t device_descriptor[] = {
+	18, 1,
+	0x10, 0x01,
+	0x0, 0x0, 0x0,
+	0x08,
+	0x09, 0x12,    // ID Vendor
+	0x04, 0xd0,    // ID Product 0xd004 = UIAPduino SD+WebHID
+	0x01, 0x00,
+	1, 2, 3, 1,
+};
+
+// Vendor HID: EP1 IN 8 bytes + Feature 16 bytes
+static const uint8_t webhid_hid_desc[] = {
+	0x06, 0x00, 0xFF,
+	HID_USAGE     ( 0x01 ),
+	HID_COLLECTION( HID_COLLECTION_APPLICATION ),
+		HID_REPORT_SIZE ( 8 ),
+		HID_REPORT_COUNT( 8 ),
+		HID_USAGE       ( 0x02 ),
+		HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
+		HID_REPORT_SIZE ( 8 ),
+		HID_REPORT_COUNT( 16 ),
+		HID_USAGE       ( 0x03 ),
+		HID_FEATURE     ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
+	HID_COLLECTION_END,
+};
+
+static const uint8_t config_descriptor[] = {
+	// configuration descriptor (1 interface: WebHID)
+	9, 2,
+	0x29, 0x00,  // wTotalLength = 41 (9+9+9+7+7)
+	0x01,        // bNumInterfaces = 1
+	0x01,        // bConfigurationValue
+	0x00,        // iConfiguration
+	0x80,        // bmAttributes
+	0x64,        // bMaxPower (200mA)
+	// Interface 0: WebHID
+	9, 4, 0, 0, 1, 0x03, 0x00, 0x00, 0,
+	9, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, sizeof(webhid_hid_desc), 0x00,
+	7, 0x05, 0x81, 0x03, 0x08, 0x00, 10,
+};
+
+#define STR_MANUFACTURER u"UIAP"
+#define STR_PRODUCT      u"UIAPduino SD+WebHID"
+#define STR_SERIAL       u"SDHID000"
+
+struct usb_string_descriptor_struct {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
+	uint16_t wString[];
+};
+const static struct usb_string_descriptor_struct string0 __attribute__((section(".rodata"))) = {
+	4, 3, {0x0409}
+};
+const static struct usb_string_descriptor_struct string1 __attribute__((section(".rodata"))) = {
+	sizeof(STR_MANUFACTURER), 3, STR_MANUFACTURER
+};
+const static struct usb_string_descriptor_struct string2 __attribute__((section(".rodata"))) = {
+	sizeof(STR_PRODUCT), 3, STR_PRODUCT
+};
+const static struct usb_string_descriptor_struct string3 __attribute__((section(".rodata"))) = {
+	sizeof(STR_SERIAL), 3, STR_SERIAL
+};
+
+const static struct descriptor_list_struct {
+	uint32_t    lIndexValue;
+	const uint8_t *addr;
+	uint8_t     length;
+} descriptor_list[] = {
+	{0x00000100, device_descriptor,  sizeof(device_descriptor)},
+	{0x00000200, config_descriptor,  sizeof(config_descriptor)},
+	{0x00002200, webhid_hid_desc,    sizeof(webhid_hid_desc)},
+	{0x00000300, (const uint8_t *)&string0, 4},
+	{0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
+	{0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
+	{0x04090303, (const uint8_t *)&string3, sizeof(STR_SERIAL)}
+};
+#define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)))
+
+#endif // INSTANCE_DESCRIPTORS
+#endif // __ASSEMBLER__
+
+#elif defined(UIAP_COMPOSITE_HID)
 // ============================================================
 // KBD+Mouse composite HID configuration
 // ============================================================
@@ -251,9 +365,77 @@ const static struct descriptor_list_struct {
 #endif // INSTANCE_DESCRIPTORS
 #endif // __ASSEMBLER__
 
-#else // !UIAP_COMPOSITE_HID
+#elif defined(UIAP_NO_USB)
 // ============================================================
-// Terminal HID configuration (default)
+// No USB: CC/D+ pins disconnected, USB stack not started
+// rv003usb.S still compiles; LTO removes rv003usb.c dispatch
+// ============================================================
+#define ENDPOINTS 2
+#define USB_PORT D
+#define USB_PIN_DP 3
+#define USB_PIN_DM 4
+#define RV003USB_DEBUG_TIMING      0
+#define RV003USB_OPTIMIZE_FLASH    1
+#define RV003USB_EVENT_DEBUGGING   0
+#define RV003USB_HANDLE_IN_REQUEST 0
+#define RV003USB_OTHER_CONTROL     0
+#define RV003USB_HANDLE_USER_DATA  0
+#define RV003USB_HID_FEATURES      0
+#define RV003USB_USB_TERMINAL      0
+// Empty handler: rv003usb_exti_dispatch not called → LTO removes it
+#define RV003_ADD_EXTI_MASK     0xFF
+#define RV003_ADD_EXTI_HANDLER  /* no USB dispatch */
+
+#ifndef __ASSEMBLER__
+#ifdef INSTANCE_DESCRIPTORS
+// Minimal stub descriptors (LTO removes these since usb_setup() is never called)
+static const uint8_t device_descriptor[] = {
+    18, 1, 0x10, 0x01, 0x0, 0x0, 0x0, 0x08,
+    0x09, 0x12, 0x00, 0xd0, 0x01, 0x00, 1, 2, 3, 1,
+};
+static const uint8_t config_descriptor[] = {
+    9, 2, 0x12, 0x00, 0x01, 0x01, 0x00, 0x80, 0x64,
+    9, 4, 0, 0, 0, 0x03, 0x00, 0x00, 0,
+};
+#define STR_MANUFACTURER u"UIAP"
+#define STR_PRODUCT      u"UIAPduino"
+#define STR_SERIAL       u"NOUSB000"
+struct usb_string_descriptor_struct {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint16_t wString[];
+};
+const static struct usb_string_descriptor_struct string0 __attribute__((section(".rodata"))) = {
+    4, 3, {0x0409}
+};
+const static struct usb_string_descriptor_struct string1 __attribute__((section(".rodata"))) = {
+    sizeof(STR_MANUFACTURER), 3, STR_MANUFACTURER
+};
+const static struct usb_string_descriptor_struct string2 __attribute__((section(".rodata"))) = {
+    sizeof(STR_PRODUCT), 3, STR_PRODUCT
+};
+const static struct usb_string_descriptor_struct string3 __attribute__((section(".rodata"))) = {
+    sizeof(STR_SERIAL), 3, STR_SERIAL
+};
+const static struct descriptor_list_struct {
+    uint32_t    lIndexValue;
+    const uint8_t *addr;
+    uint8_t     length;
+} descriptor_list[] = {
+    {0x00000100, device_descriptor,  sizeof(device_descriptor)},
+    {0x00000200, config_descriptor,  sizeof(config_descriptor)},
+    {0x00000300, (const uint8_t *)&string0, 4},
+    {0x04090301, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
+    {0x04090302, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
+    {0x04090303, (const uint8_t *)&string3, sizeof(STR_SERIAL)}
+};
+#define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)))
+#endif // INSTANCE_DESCRIPTORS
+#endif // __ASSEMBLER__
+
+#elif defined(UIAP_USB_TERMINAL)
+// ============================================================
+// Terminal HID configuration (hidapitester etc.)
 // ============================================================
 
 //Defines the number of endpoints for this device. (Always add one for EP0). For two EPs, this should be 3.
@@ -420,6 +602,6 @@ const static struct descriptor_list_struct {
 
 #endif // __ASSEMBLER__
 
-#endif // UIAP_COMPOSITE_HID
+#endif // USB config selection
 
 #endif // _USB_CONFIG_H

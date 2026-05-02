@@ -112,6 +112,8 @@ SECTIONS
   PROVIDE( _end = _ebss);
   PROVIDE( end = . );
   PROVIDE( _eusrstack = ORIGIN(RAM) + LENGTH(RAM));
+  /* Heap ends 448 bytes below top of RAM (stack reserve) */
+  PROVIDE( _heap_end = ORIGIN(RAM) + LENGTH(RAM) - 448 );
   /DISCARD/ : {
    *(.note .note.*)
    *(.eh_frame .eh_frame.*)

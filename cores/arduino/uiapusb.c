@@ -10,17 +10,32 @@ static uint8_t g_uiap_core_inited = 0;
 static uint8_t g_uiap_usb_inited  = 0;
 
 /*
- * D- (USB_PIN_DM) を出力 Low に駆動して、
- * ハードワイヤのプルアップをオーバーライドする。
- * ホストはデバイス未接続と認識する。
+ * USB-C CC ピン（CC1=PC4, CC2=PD2）を INPUT_FLOATING にして USB 接続を切断する。
+ *
+ * 本ボードは USB-C コネクタを採用しており、CC1(PC4)/CC2(PD2) に外付け 5.1kΩ
+ * Rd 抵抗が接続されている。GPIO を INPUT_FLOATING にすると Rd が CC ラインから
+ * 切り離され、USB-C ホストはデバイス未接続と判断して D+/D- の列挙を試みなくなる。
+ *
+ * D+ (PD3) も INPUT_FLOATING にし、外付けプルアップ（1.5kΩ to 3V3）が残っても
+ * ホスト側では CC ピン未検出のため無視される。
+ * D- (PD4) は OUTPUT LOW のままにしておく（任意；SE0 回避のために明示する）。
  */
 static void usb_disconnect(void)
 {
-    RCC->APB2PCENR |= RCC_APB2Periph_GPIOD;
-    /* PD4 (USB_PIN_DM=4): 出力 push-pull, 2MHz */
-    GPIOD->CFGLR = (GPIOD->CFGLR & ~(0xf << (USB_PIN_DM * 4)))
-                  | ((GPIO_Speed_2MHz | GPIO_CNF_OUT_PP) << (USB_PIN_DM * 4));
-    GPIOD->BCR = 1 << USB_PIN_DM;   /* D- = Low */
+    RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD;
+
+    /* CC1 (PC4) = floating input: CNF=01 MODE=00 → 0x4 */
+    GPIOC->CFGLR = (GPIOC->CFGLR & ~(0xfu << (4 * 4)))
+                 | (0x4u << (4 * 4));
+
+    /* CC2 (PD2) = floating input,  D+ (PD3) = floating input,
+     * D-  (PD4) = 2MHz PP output LOW                          */
+    GPIOD->CFGLR = (GPIOD->CFGLR
+                  & ~((0xfu << (2 * 4)) | (0xfu << (3 * 4)) | (0xfu << (4 * 4))))
+                  | (0x4u << (2 * 4))   /* PD2 CC2: floating input  */
+                  | (0x4u << (3 * 4))   /* PD3 D+:  floating input  */
+                  | (0x2u << (4 * 4));  /* PD4 D-:  2MHz PP output  */
+    GPIOD->BCR = (1u << 4);             /* D- = Low */
 }
 
 void uiap_core_begin(void)
@@ -36,8 +51,21 @@ void uiapusb_begin(void)
 {
     if (g_uiap_usb_inited) return;
     uiap_core_begin();
+
+#ifndef UIAP_NO_USB
+    /* CC1 (PC4), CC2 (PD2) を OUTPUT LOW にして外付け Rd を有効化する。
+     * USB-C ホストが CC ラインで Rd を検出し、D+/D- の列挙を開始する。 */
+    /* CC1 (PC4) = 2MHz PP output LOW */
+    GPIOC->CFGLR = (GPIOC->CFGLR & ~(0xfu << (4 * 4))) | (0x2u << (4 * 4));
+    GPIOC->BCR = (1u << 4);
+    /* CC2 (PD2) = 2MHz PP output LOW */
+    GPIOD->CFGLR = (GPIOD->CFGLR & ~(0xfu << (2 * 4))) | (0x2u << (2 * 4));
+    GPIOD->BCR = (1u << 2);
+
     Delay_Ms(1);
     usb_setup();
+#endif /* UIAP_NO_USB */
+
     g_uiap_usb_inited = 1;
 }
 
@@ -225,7 +253,102 @@ void uiapkbd_keyboard_clear(void)
 }
 
 // ============================================================
-#else  // Terminal HID (default)
+#elif defined(UIAP_WEBHID_ONLY) \
+   || (!defined(UIAP_NO_USB) && !defined(UIAP_USB_TERMINAL))
+// ============================================================
+// WebHID-only mode: EP1 IN (UIAPduino→Web) + EP0 Feature (Web→UIAPduino)  ← DEFAULT
+// ============================================================
+
+static volatile uint8_t webhid_tx_buf[8]        = {0};
+static volatile uint8_t webhid_tx_pending        = 0;
+static volatile uint8_t webhid_rx_buf[16];
+static volatile uint8_t webhid_rx_len            = 0;
+static volatile uint8_t webhid_rx_ready          = 0;
+static volatile uint8_t webhid_set_report_pending = 0;
+static volatile uint8_t webhid_rx_offset         = 0;
+static volatile uint8_t webhid_rx_expected_len   = 0;
+
+void usb_handle_user_in_request(struct usb_endpoint *e, uint8_t *scratchpad,
+                                 int endp, uint32_t sendtok,
+                                 struct rv003usb_internal *ist)
+{
+    if (endp == 1) {
+        if (webhid_tx_pending) {
+            usb_send_data((uint8_t *)webhid_tx_buf, 8, 0, sendtok);
+            webhid_tx_pending = 0;
+        } else {
+            usb_send_empty(sendtok);
+        }
+    } else {
+        usb_send_empty(sendtok);
+    }
+}
+
+void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen,
+                                      uint32_t lValueLSBIndexMSB)
+{
+    (void)e; (void)lValueLSBIndexMSB;
+    webhid_rx_expected_len = (reqLen > 16) ? 16 : (uint8_t)reqLen;
+    webhid_rx_offset       = 0;
+    webhid_set_report_pending = 1;
+}
+
+void usb_handle_hid_get_report_start(struct usb_endpoint *e, int reqLen,
+                                      uint32_t lValueLSBIndexMSB)
+{
+    (void)lValueLSBIndexMSB;
+    e->opaque  = (uint8_t *)webhid_tx_buf;
+    e->max_len = (reqLen < 8) ? reqLen : 8;
+}
+
+void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint,
+                           uint8_t *data, int len,
+                           struct rv003usb_internal *ist)
+{
+    (void)e; (void)ist;
+    if (current_endpoint == 0 && webhid_set_report_pending) {
+        uint8_t space    = webhid_rx_expected_len - webhid_rx_offset;
+        uint8_t copy_len = ((uint8_t)len > space) ? space : (uint8_t)len;
+        for (int i = 0; i < copy_len; i++)
+            webhid_rx_buf[webhid_rx_offset + i] = data[i];
+        webhid_rx_offset += copy_len;
+        if (webhid_rx_offset >= webhid_rx_expected_len) {
+            webhid_set_report_pending = 0;
+            webhid_rx_len   = webhid_rx_expected_len;
+            webhid_rx_ready = 1;
+        }
+    }
+}
+
+void uiapwebhid_send(const uint8_t *buf, uint8_t len)
+{
+    while (webhid_tx_pending) {}
+    if (len > 8) len = 8;
+    for (int i = 0; i < len; i++) webhid_tx_buf[i] = buf[i];
+    for (int i = len; i < 8;  i++) webhid_tx_buf[i] = 0;
+    webhid_tx_pending = 1;
+}
+
+uint8_t uiapwebhid_tx_busy(void)   { return webhid_tx_pending; }
+uint8_t uiapwebhid_available(void) { return webhid_rx_ready; }
+
+uint8_t uiapwebhid_recv(uint8_t *buf, uint8_t maxlen)
+{
+    if (!webhid_rx_ready) return 0;
+    uint8_t len = (webhid_rx_len < maxlen) ? webhid_rx_len : maxlen;
+    for (int i = 0; i < len; i++) buf[i] = webhid_rx_buf[i];
+    webhid_rx_ready = 0;
+    return len;
+}
+
+// ============================================================
+#elif defined(UIAP_NO_USB)
+// ============================================================
+// No USB mode: no callbacks, no USB stack beyond disconnect
+// ============================================================
+
+// ============================================================
+#elif defined(UIAP_USB_TERMINAL)
 // ============================================================
 
 #define UIAPUSB_RX_BUF_SIZE 256
@@ -290,4 +413,4 @@ int uiapusb_write(const uint8_t *buf, int len)
     return len;
 }
 
-#endif // UIAP_COMPOSITE_HID
+#endif // USB mode selection

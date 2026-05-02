@@ -25,8 +25,10 @@ int  uiapusb_read(uint8_t *buf, int maxlen);
 int  uiapusb_write(const uint8_t *buf, int len);
 #endif
 
-/* WebHID モード: EP3 双方向通信 (UIAP_COMPOSITE_HID + UIAP_WEBHID 必須) */
-#ifdef UIAP_WEBHID
+/* WebHID モード:
+ *   EP3 双方向通信 (UIAP_COMPOSITE_HID + UIAP_WEBHID)
+ *   EP1 双方向通信 (UIAP_WEBHID_ONLY)                 */
+#if defined(UIAP_WEBHID) || defined(UIAP_WEBHID_ONLY)
 void    uiapwebhid_send(const uint8_t *buf, uint8_t len);
 uint8_t uiapwebhid_tx_busy(void);
 uint8_t uiapwebhid_available(void);

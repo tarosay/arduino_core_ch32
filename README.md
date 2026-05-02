@@ -7,49 +7,42 @@ Arduino IDE で UIAPduino を使うための Arduino コアです。
 
 ## ボードについて
 
-### HID ProMicro CH32V003（ターミナル HID）
+### HID ProMicro CH32V003
 
-PC と USB HID 経由でデータを送受信する汎用ボードです。
-
-- MCU: WCH CH32V003F4 (RISC-V, 48MHz)
-- フラッシュ: 16KB / RAM: 2KB
-- USB: Type-C（HID デバイスとして動作）
-- ピン: 15本の GPIO をヘッダーに引き出し
-
-### HID ProMicro CH32V003 KBD+Mouse（キーボード＋マウス HID）
-
-USB キーボード・マウスとして PC を操作するボードです。  
-**Board Version Select** メニューで機能を選択できます。
-
-| Board Version | 機能 |
-|--------------|------|
-| V1.4 | キーボード (EP2) ＋ マウス (EP1) |
-| V1.4 + WebHID (EP3) | キーボード ＋ マウス ＋ WebHID 双方向通信 (EP3) |
+| 項目 | 仕様 |
+|------|------|
+| MCU | WCH CH32V003F4（RISC-V, 48MHz） |
+| Flash | 16KB |
+| RAM | 2KB |
+| USB | Type-C（HID デバイスとして動作） |
+| GPIO | 15本（ヘッダーに引き出し）+ PD3/PD4（USB 専用） |
 
 ---
 
 ## ピン配置
 
-| Arduino番号 | ポート | 備考 |
-|:-----------:|:------:|------|
-| GPIO_PIN_0  | PA1    | A1 |
-| GPIO_PIN_1  | PA2    | A0 |
-| GPIO_PIN_2  | PC0    | LED |
-| GPIO_PIN_3  | PC1    | SDA |
-| GPIO_PIN_4  | PC2    | SCL |
-| GPIO_PIN_5  | PC3    | PWM |
-| GPIO_PIN_6  | PC4    | A2 / SS |
-| GPIO_PIN_7  | PC5    | SCK |
-| GPIO_PIN_8  | PC6    | MOSI |
-| GPIO_PIN_9  | PC7    | MISO |
-| GPIO_PIN_10 | PD0    | |
-| GPIO_PIN_11 | PD1    | SWIO デバッグピン（要 `pinDisconnectDebug()`） |
-| GPIO_PIN_12 | PD2    | A3 |
-| GPIO_PIN_15 | PD5    | TX / A5 |
-| GPIO_PIN_16 | PD6    | RX / A6 |
+| Arduino 番号 | ポート | 機能 |
+|:---:|:---:|---|
+| GPIO_PIN_0  | PA1 | A1 |
+| GPIO_PIN_1  | PA2 | A0 |
+| GPIO_PIN_2  | PC0 | **LED** |
+| GPIO_PIN_3  | PC1 | SDA / **SPI SS** |
+| GPIO_PIN_4  | PC2 | SCL |
+| GPIO_PIN_5  | PC3 | PWM |
+| GPIO_PIN_6  | PC4 | A2 / CC1（USB-C） |
+| GPIO_PIN_7  | PC5 | **SPI SCK** |
+| GPIO_PIN_8  | PC6 | **SPI MOSI** |
+| GPIO_PIN_9  | PC7 | **SPI MISO** |
+| GPIO_PIN_10 | PD0 | |
+| GPIO_PIN_11 | PD1 | SWIO（要 `pinDisconnectDebug()`） |
+| GPIO_PIN_12 | PD2 | A3 / CC2（USB-C） |
+| GPIO_PIN_13 | PD3 | A4 / USB D+（ヘッダー無し） |
+| GPIO_PIN_14 | PD4 | A7 / USB D-（ヘッダー無し） |
+| GPIO_PIN_15 | PD5 | A5 / **UART TX** |
+| GPIO_PIN_16 | PD6 | A6 / **UART RX** |
+| GPIO_PIN_17 | PD7 | RESET（ヘッダー無し） |
 
-> **注意:** GPIO_PIN_11 (PD1) は SWIO デバッグピンと共用です。  
-> 通常の GPIO として使う場合は `pinDisconnectDebug(GPIO_PIN_11)` を最初に1回呼んでください。
+> **PD1 (SWIO):** 通常の GPIO として使う場合は `setup()` 内で `pinDisconnectDebug(GPIO_PIN_11)` を1回呼んでください。
 
 ---
 
@@ -61,41 +54,104 @@ Arduino IDE の「環境設定」→「追加のボードマネージャのURL�
 https://github.com/tarosay/board_manager_files/raw/main/package_ch32v_index.json
 ```
 
-「ボードマネージャ」で `UIAPduino` を検索してインストールしてください。
+「ボードマネージャ」で `UIAPduino` を検索してインストールしてください。  
+`Tools > Board > UIAP_HID > HID ProMicro CH32V003` を選択します。
 
 ---
 
-## HID API（ターミナルモード）
+## Tools メニュー
 
-`HID ProMicro CH32V003` で使用します。  
-USB 経由でホスト PC とデータを送受信します。
+### USB（USB モード選択）
+
+USB の動作モードを選択します。**デフォルトは WebHID Only** です。
+
+| 選択肢 | 内容 | 主な用途 |
+|--------|------|----------|
+| **WebHID Only**（デフォルト） | ブラウザ（Chrome/Edge）と双方向通信 | センサーモニタ、デバッグ出力 |
+| Keyboard+Mouse | USB キーボード＋マウスとして動作 | PC 操作の自動化 |
+| Keyboard+Mouse+WebHID | 上記＋ブラウザ通信（EP3）を追加 | KBD/Mouse ＋ WebHID 同時使用 |
+| Terminal HID | hidapitester 等のツールと通信 | PC ネイティブアプリとの連携 |
+
+### U(S)ART support（シリアル選択）
+
+UART の使い方を選択します。**デフォルトは None（UIAPSerial 推奨）** です。
+
+| 選択肢 | 内容 | Flash コスト |
+|--------|------|-------------|
+| **None (use UIAPSerial)**（デフォルト） | 軽量な独自 UART ラッパーを使用 | 最小 |
+| HardwareSerial (Serial / USART1) | 標準 `Serial` オブジェクトを使用 | **+約 4,748B**（未使用でも消費） |
+
+> Flash が 16KB しかないため、SD ライブラリ等と併用する場合は **None (UIAPSerial)** を推奨します。
+
+### Optimize（最適化レベル）
+
+すべての選択肢で **LTO（リンク時最適化）が有効** です。Flash 節約のため LTO は必須です。
+
+| 選択肢 | フラグ | 用途 |
+|--------|--------|------|
+| **Smallest (-Os) with LTO**（デフォルト） | `-Os -flto` | 通常使用 |
+| Fast (-O1) with LTO | `-O1 -flto` | 速度重視 |
+| Faster (-O2) with LTO | `-O2 -flto` | より速度重視 |
+| Fastest (-O3) with LTO | `-O3 -flto` | 最速（Flash 増加の可能性あり） |
+
+---
+
+## WebHID Only モード（デフォルト）
+
+Chrome / Edge の WebHID API を使って、UIAPduino とブラウザが直接双方向通信します。  
+追加ライブラリ不要で、最も Flash を節約できます。
 
 ```cpp
+#include <WebHID.h>
+
 void setup() {
-  HIDuiap.begin();
-  delay(5000);  // USB 接続待ち
+  WebHID.begin();
+  delay(2000);  // USB 接続待ち
 }
 
 void loop() {
-  HIDuiap.write((const uint8_t*)"Hello UIAPduino\n", 16);
-  delay(1000);
+  // ブラウザからデータを受信してエコーバック
+  if (WebHID.available()) {
+    uint8_t buf[16];
+    uint8_t len = WebHID.recv(buf, sizeof(buf));
+    WebHID.send(buf, len);
+  }
+
+  // 1秒ごとにカウンタを送信
+  static uint32_t last = 0;
+  static uint8_t cnt = 0;
+  if (millis() - last >= 1000) {
+    last = millis();
+    WebHID.send(cnt++, 0, 0, 0, 0, 0, 0, 0);
+  }
 }
 ```
 
+### WebHID API
+
 | メソッド | 説明 |
 |---------|------|
-| `HIDuiap.begin()` | HID 通信を開始する |
-| `HIDuiap.write(buf, len)` | データを送信する |
-| `HIDuiap.read(buf, maxlen)` | データを受信する |
-| `HIDuiap.available()` | 受信データのバイト数を返す |
+| `WebHID.begin()` | USB を開始する |
+| `WebHID.send(buf, len)` | Input Report でブラウザへ送信（最大 8 バイト） |
+| `WebHID.send(b0,b1,...,b7)` | 個別バイト指定で送信（最大 8 バイト） |
+| `WebHID.available()` | ブラウザからのデータが届いているか |
+| `WebHID.recv(buf, maxlen)` | Feature Report を受信（最大 16 バイト） |
+
+### USB エンドポイント構成（WebHID Only）
+
+| EP | 方向 | 用途 |
+|----|------|------|
+| EP1 IN | UIAPduino → ブラウザ | Input Report（8 バイト） |
+| EP0 Feature | ブラウザ → UIAPduino | Feature Report（最大 16 バイト） |
+
+> **注意:** WebHID は Chrome / Edge のみ対応です。ブラウザ側の実装は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) を参照してください。
 
 ---
 
-## Keyboard / Mouse ライブラリ（KBD+Mouse モード）
+## Keyboard+Mouse モード
 
-`HID ProMicro CH32V003 KBD+Mouse` で使用します。  
-ボード選択: `Tools > Board > HID ProMicro CH32V003 KBD+Mouse`  
-バージョン選択: `Tools > Board Version Select > V1.4`
+USB キーボード・マウスデバイスとして PC を操作します。  
+`Tools > USB > Keyboard+Mouse` を選択してください。
 
 ```cpp
 #include <Keyboard.h>
@@ -108,8 +164,8 @@ void setup() {
 }
 
 void loop() {
-  Keyboard.print("Hello");   // キー入力
-  Mouse.move(10, 0);         // マウスを右に10移動
+  Keyboard.print("Hello");  // キー入力
+  Mouse.move(10, 0);        // マウスを右に10移動
   delay(1000);
 }
 ```
@@ -135,32 +191,20 @@ void loop() {
 
 #### 特殊キーを使う場合の注意
 
-USB Low Speed のポーリング間隔（EP2: 10ms）の非同期性により、
-矢印・BackSpace・Enter・Home などの特殊キーは **`Keyboard.write()`** を使い、
-さらに呼び出しの後に **`delay(50)`** を入れると取りこぼしなく動作します。
+USB Low Speed のポーリング間隔（EP2: 10ms）により、矢印・BackSpace 等の特殊キーは
+**`Keyboard.write()`** を使い、呼び出しの後に **`delay(50)`** を入れると確実に動作します。
 
 ```cpp
-// ✅ 推奨: write() + delay(50)
+// ✅ 推奨
 for (int i = 0; i < 6; i++) {
   Keyboard.write(KEY_LEFT_ARROW);
   delay(50);
 }
 
-// ❌ 非推奨: press() + releaseAll() はポーリングを逃して無効になることがある
+// ❌ 非推奨: ポーリングを逃して無効になることがある
 Keyboard.press(KEY_LEFT_ARROW);
 Keyboard.releaseAll();
 ```
-
-#### `Keyboard.write()` のタイミング
-
-```
-press → delay(20ms) → release → delay(20ms) → 次のキーへ
-```
-
-- 20ms の press 待機で EP2 ポーリングを 1〜2 回確実に通過させる
-- 20ms の release 待機でホストが key-up を認識する
-- 1文字あたり約 40ms（"Hello UIAPduino World." 22文字 ≈ 0.9 秒）
-- 特殊キー後のスケッチ側 `delay(50)` と合わせると合計約 90ms の余裕
 
 ### Mouse API
 
@@ -168,121 +212,146 @@ press → delay(20ms) → release → delay(20ms) → 次のキーへ
 |---------|------|
 | `Mouse.begin()` | マウスを開始する |
 | `Mouse.move(x, y, wheel)` | 相対移動（各 -127〜127） |
-| `Mouse.moveLarge(x, y, wheel, steps)` | 大きな相対移動（-127〜127 の範囲を超える移動を steps 分割で送信） |
+| `Mouse.moveLarge(x, y, wheel, steps)` | 大きな相対移動（-127〜127 超を steps 分割で送信） |
 | `Mouse.press(btn)` | ボタンを押す |
 | `Mouse.release(btn)` | ボタンを離す |
 | `Mouse.click(btn)` | クリック |
 
-#### `Mouse.moveLarge()` の使い方
-
-`move()` の 1 回あたりの最大移動量は **-127〜127** に制限されています（USB HID の int8_t 制限）。  
-それ以上の距離を移動させたい場合は `moveLarge()` を使います。
-
 ```cpp
-// 500px 右・300px 上を 20 ステップに分割して移動（1ステップ = 25px 右・15px 上）
+// 500px 右・300px 上を 20 ステップに分割して移動
 Mouse.moveLarge(500, -300, 0, 20);
-
-// wheel・steps を省略するとデフォルト（wheel=0, steps=10）
-Mouse.moveLarge(200, 100);
 ```
-
-- `steps` は分割数（デフォルト 10）。小さいほど動きが速く・大きいほど滑らか
-- 各ステップ間に `delay(10)` を挿入し、EP1 ポーリング（10ms）に確実に乗せる
-- `dx` / `dy` は int 型なので任意の大きさを指定可能
 
 ---
 
-## WebHID ライブラリ（KBD+Mouse + WebHID モード）
+## Keyboard+Mouse+WebHID モード
 
-`HID ProMicro CH32V003 KBD+Mouse` + `V1.4 + WebHID (EP3)` で使用します。  
-Chrome / Edge の **WebHID API** を使って、Web ブラウザと UIAPduino が双方向通信できます。  
-キーボード・マウス機能と同時に使用可能です。
-
-> **注意:** WebHID は Chrome / Edge のみ対応です。キーボード・マウス HID インターフェースは  
-> ブラウザのセキュリティ制限で直接アクセスできないため、ベンダー定義 HID (EP3) を使用します。
+Keyboard+Mouse 機能に加えて、WebHID（EP3）でブラウザとの双方向通信も使えます。  
+`Tools > USB > Keyboard+Mouse+WebHID` を選択してください。
 
 ```cpp
+#include <Keyboard.h>
 #include <WebHID.h>
 
 void setup() {
+  Keyboard.begin();
   WebHID.begin();
   delay(2000);
 }
 
 void loop() {
-  // Web からデータを受信してエコーバック
   if (WebHID.available()) {
     uint8_t buf[16];
     uint8_t len = WebHID.recv(buf, sizeof(buf));
-    WebHID.send(buf, len);
-  }
-
-  // 1秒ごとにカウンタを送信
-  static uint32_t last = 0;
-  static uint8_t counter = 0;
-  if (millis() - last >= 1000) {
-    last = millis();
-    WebHID.send(counter++, 0, 0, 0, 0, 0, 0, 0);
+    // 受信内容に応じてキー操作なども可能
   }
 }
 ```
 
-### WebHID API
-
-| メソッド | 説明 |
-|---------|------|
-| `WebHID.begin()` | USB を開始する |
-| `WebHID.send(buf, len)` | EP3 Input Report で Web へ送信（最大 8 バイト） |
-| `WebHID.send(b0,b1,...,b7)` | 個別バイト指定で送信（最大 8 バイト） |
-| `WebHID.available()` | Web からのデータが届いているか |
-| `WebHID.recv(buf, maxlen)` | Feature Report を受信（最大 16 バイト） |
-
-### USB エンドポイント構成（V1.4 + WebHID）
+### USB エンドポイント構成（Keyboard+Mouse+WebHID）
 
 | EP | 方向 | 用途 |
 |----|------|------|
 | EP1 IN | UIAPduino → PC | マウスレポート |
 | EP2 IN | UIAPduino → PC | キーボードレポート |
-| EP3 IN | UIAPduino → Web | WebHID Input Report (8 bytes) |
-| EP0 Feature | Web → UIAPduino | WebHID Feature Report (最大 16 bytes) |
+| EP3 IN | UIAPduino → ブラウザ | WebHID Input Report（8 バイト） |
+| EP0 Feature | ブラウザ → UIAPduino | WebHID Feature Report（最大 16 バイト） |
+
+---
+
+## Terminal HID モード
+
+hidapitester 等の PC ネイティブツールと HID で通信します。  
+`Tools > USB > Terminal HID` を選択してください。
+
+```cpp
+void setup() {
+  HIDuiap.begin();
+  delay(5000);  // USB 接続待ち
+}
+
+void loop() {
+  HIDuiap.write((const uint8_t*)"Hello UIAPduino\n", 16);
+  delay(1000);
+}
+```
+
+| メソッド | 説明 |
+|---------|------|
+| `HIDuiap.begin()` | HID 通信を開始する |
+| `HIDuiap.write(buf, len)` | データを送信する |
+| `HIDuiap.read(buf, maxlen)` | データを受信する |
+| `HIDuiap.available()` | 受信データのバイト数を返す |
+
+---
+
+## UART / シリアル通信
+
+### UIAPSerial（推奨・デフォルト）
+
+Flash を節約する軽量な UART ラッパーです。`Tools > U(S)ART support > None (use UIAPSerial)` のときに使います。  
+スケッチに `UIAPSerial.h` / `UIAPSerial.cpp` を同梱してください（サンプルスケッチ参照）。
+
+```cpp
+#include "UIAPSerial.h"  // スケッチと同じフォルダに配置
+
+void setup() {
+  uart.begin(9600);        // USART1 初期化（TX=PD5, RX=PD6）
+}
+
+void loop() {
+  if (uart.available()) {
+    uint8_t b = uart.read();
+    uart.write(b);         // エコーバック（TX+RX 版の場合）
+  }
+}
+```
+
+### HardwareSerial（標準 Arduino 互換）
+
+標準の `Serial` オブジェクトを使いたい場合は `Tools > U(S)ART support > HardwareSerial (Serial / USART1)` を選択します。
+
+> **注意:** `Serial` を一度も呼ばなくても **約 4,748B の Flash を消費します。**  
+> SD ライブラリや WebHID と併用する場合は Flash が不足する可能性があります。
+
+```cpp
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Hello UIAPduino");
+}
+
+void loop() {}
+```
 
 ---
 
 ## Tone ライブラリ
 
 `tone()` / `noTone()` で圧電ブザーや小型スピーカーに音を鳴らせます。  
-`TIM_MODULE_ENABLED` が有効な場合、ピンにタイマーチャネルが割り当てられていれば **ハードウェア PWM** で動作します。  
-タイマーチャネルがないピンはソフトウェアビットバンフォールバックになります。
+タイマーチャネルが割り当てられたピンでは**ハードウェア PWM**で動作します。
 
-**接続例（KBD+Mouse ボード）**
 ```
-A2 (PC4 / TIM1_CH4) --- ブザー(+) --- GND
+PC4 (GPIO_PIN_6 / TIM1_CH4) --- ブザー(+) --- GND
 ```
 
 ```cpp
-#define BUZZER_PIN A2
+#define BUZZER_PIN GPIO_PIN_6
 
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
-  tone(BUZZER_PIN, 440);   // 440 Hz でノンブロッキング再生開始
+  tone(BUZZER_PIN, 440);   // 440Hz でノンブロッキング再生開始
 }
 
 void loop() {
   delay(1200);
-  // noTone(BUZZER_PIN);  // 停止したい場合
 }
 ```
 
-### Tone API
-
 | 関数 | 説明 |
 |------|------|
-| `tone(pin, freq)` | 指定周波数で再生開始（ノンブロッキング、`noTone()` まで鳴り続ける） |
-| `tone(pin, freq, duration)` | `duration` ms 鳴らして自動停止（CPU をブロック） |
-| `noTone(pin)` | 再生を停止してピンを LOW に戻す |
-
-> **注意:** `duration` を指定した場合、`tone()` は内部で `delay(duration)` を実行します。  
-> `duration` なし（`tone(pin, freq)`）はハードウェアタイマーが自律動作するためノンブロッキングです。
+| `tone(pin, freq)` | 指定周波数で再生開始（ノンブロッキング） |
+| `tone(pin, freq, duration)` | `duration` ms 鳴らして自動停止 |
+| `noTone(pin)` | 再生を停止して LOW に戻す |
 
 ---
 
@@ -290,24 +359,21 @@ void loop() {
 
 ### `pinDisconnectDebug(uint32_t pin)`
 
-Arduino ピン番号を渡してデバッグ機能を切り離す関数です。  
-`PinName` 型への変換は内部で自動的に行われます。
+PD1（SWIO デバッグピン）を通常の GPIO として使えるようにします。
 
 ```cpp
-pinDisconnectDebug(GPIO_PIN_11);  // PD1 を通常 GPIO として使えるようにする
-pinMode(GPIO_PIN_11, OUTPUT);
+void setup() {
+  pinDisconnectDebug(GPIO_PIN_11);  // PD1 を通常 GPIO に切り替え
+  pinMode(GPIO_PIN_11, OUTPUT);
+}
 ```
-
-> **フラッシュ節約のため `pinMode()` 内では自動実行されません。**  
-> 必要なピンに対してスケッチの `setup()` で明示的に呼んでください。
 
 ### `GPIO_PIN_N` マクロ
 
-ピン番号を分かりやすく記述するためのエイリアスです。  
-`GPIO_Pin_N`（小文字 `p`）は CH32 ペリフェラルライブラリのビットマスクとして既に使われているため、大文字 `GPIO_PIN_N` を採用しています。
+CH32 ペリフェラルライブラリの `GPIO_Pin_N`（ビットマスク）と区別するため、大文字の `GPIO_PIN_N` を採用しています。
 
 ```cpp
-pinMode(GPIO_PIN_6, OUTPUT);   // PC4 を出力に設定
+pinMode(GPIO_PIN_6, OUTPUT);    // PC4 を出力に設定
 digitalWrite(GPIO_PIN_6, HIGH);
 ```
 
@@ -315,14 +381,14 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## サンプルスケッチ
 
-### HID ProMicro CH32V003（ターミナル HID）
+### HID 共通（WebHID / Terminal HID）
 
 `ファイル` → `スケッチ例` → `HID` から開けます。
 
 | スケッチ | 内容 |
 |---------|------|
-| Blink | LED (GPIO_PIN_2 / PC0) を点滅 |
-| GPIO_test | ボード上の全 GPIO を順番にテスト |
+| Blink | LED (PC0) を点滅 |
+| GPIO_test | 全 GPIO を順番にテスト |
 | HidDigitalWriteRead | GPIO の書き込み・読み返しを HID で確認 |
 | HidLoopbackBlink | HID 受信データに応じて LED を制御 |
 | HidMillisTicker | `millis()` の値を定期送信 |
@@ -330,21 +396,35 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | HidAdcMonitor | ADC 値を定期送信 |
 | PwmAndToneTest | PWM / Tone の動作確認 |
 
-### HID ProMicro CH32V003 KBD+Mouse
+### Keyboard / Mouse
 
-`ファイル` → `スケッチ例` → `Keyboard` / `Mouse` / `WebHID` から開けます。
+`ファイル` → `スケッチ例` → `Keyboard` / `Mouse` から開けます。
 
-| ライブラリ | スケッチ | 内容 |
-|-----------|---------|------|
-| Keyboard / Mouse | KbdMouseTest | キー入力とマウス移動のサンプル |
-| Keyboard | KeyboardPractice | キーボード HID 練習（Step ごとにコメントを外して書き込む） |
-| Keyboard | KeyboardSwitch | キーボード HID 練習（switch 文で全 Step を 1 回の書き込みで切り替え） |
-| WebHID | WebHIDTest | EP3 エコーバック ＋ 1秒ごとカウンタ送信 |
-| Tone | ToneBasic | 440 Hz をノンブロッキングで鳴らし続ける基本サンプル |
-| Tone | ToneDuration | ドレミスケールを `tone(pin, freq, duration)` で順番に演奏 |
-| Tone | ToneNoTone | `tone()` → `noTone()` を繰り返す停止・再開サンプル |
+| スケッチ | 内容 |
+|---------|------|
+| KbdMouseTest | キー入力とマウス移動のサンプル |
+| KeyboardPractice | キーボード HID 練習（Step ごとにコメントを外す） |
+| KeyboardSwitch | キーボード HID 練習（switch 文で Step 切り替え） |
 
 > **KeyboardPractice / KeyboardSwitch** は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) の練習ページと連携して使います。
+
+### WebHID
+
+`ファイル` → `スケッチ例` → `WebHID` から開けます。
+
+| スケッチ | 内容 |
+|---------|------|
+| WebHIDTest | エコーバック＋1秒ごとカウンタ送信 |
+
+### Tone
+
+`ファイル` → `スケッチ例` → `Tone` から開けます。
+
+| スケッチ | 内容 |
+|---------|------|
+| ToneBasic | 440Hz をノンブロッキングで鳴らし続ける |
+| ToneDuration | ドレミスケールを順番に演奏 |
+| ToneNoTone | `tone()` / `noTone()` を繰り返す停止・再開 |
 
 ---
 

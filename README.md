@@ -71,6 +71,7 @@ USB の動作モードを選択します。**デフォルトは WebHID Only** �
 | Keyboard+Mouse | USB キーボード＋マウスとして動作 | PC 操作の自動化 |
 | Keyboard+Mouse+WebHID | 上記＋ブラウザ通信（EP3）を追加 | KBD/Mouse ＋ WebHID 同時使用 |
 | Terminal HID | hidapitester 等のツールと通信 | PC ネイティブアプリとの連携 |
+| No USB (SD log / UART only) | USB スタックを除外（約 484B 節約） | SD ログ・UART 専用スケッチ |
 
 ### U(S)ART support（シリアル選択）
 

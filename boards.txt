@@ -68,6 +68,8 @@ CH32V003.menu.usb.kbdweb=Keyboard+Mouse+WebHID
 CH32V003.menu.usb.kbdweb.build.flags.usb=-DUIAP_COMPOSITE_HID -DUIAP_WEBHID
 CH32V003.menu.usb.terminal=Terminal HID
 CH32V003.menu.usb.terminal.build.flags.usb=-DUIAP_USB_TERMINAL
+CH32V003.menu.usb.nousb=No USB (SD log / UART only)
+CH32V003.menu.usb.nousb.build.flags.usb=-DUIAP_NO_USB
 
 # U(S)ART / HardwareSerial
 # Note: HardwareSerial uses USART1 (TX=PD5, RX=PD6).

@@ -256,7 +256,15 @@ void uiapkbd_keyboard_clear(void)
 #elif defined(UIAP_WEBHID_ONLY) \
    || (!defined(UIAP_NO_USB) && !defined(UIAP_USB_TERMINAL))
 // ============================================================
-// WebHID-only mode: EP1 IN (UIAPduino→Web) + EP0 Feature (Web→UIAPduino)  ← DEFAULT
+// WebHID-only mode: EP1 IN (UIAPduino→Web) + EP0 Feature (Web→UIAPduino)
+//
+// このブロックは以下の2つのケースをカバーする:
+//   1. UIAP_WEBHID_ONLY が定義されている場合
+//      → boards.txt: Tools > USB > WebHID Only (-DUIAP_WEBHID_ONLY)
+//   2. 上記に加え、他のどのモードフラグも定義されていない場合（安全網）
+//      → UIAP_COMPOSITE_HID / UIAP_NO_USB / UIAP_USB_TERMINAL のいずれでもない
+//      → 将来新しいモードを追加する際は、そのフラグをこの条件に明示的に追加すること
+//         例: || (!defined(UIAP_NO_USB) && !defined(UIAP_USB_TERMINAL) && !defined(UIAP_NEW_MODE))
 // ============================================================
 
 static volatile uint8_t webhid_tx_buf[8]        = {0};

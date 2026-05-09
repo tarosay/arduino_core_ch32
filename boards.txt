@@ -61,7 +61,7 @@ CH32V003.menu.clock.24MHz_HSI.build.flags.clock=-DSYSCLK_FREQ_24MHz_HSI=24000000
 
 # USB (default: WebHID Only — no flag needed, see usb_config.h)
 CH32V003.menu.usb.webhid=WebHID Only
-CH32V003.menu.usb.webhid.build.flags.usb=
+CH32V003.menu.usb.webhid.build.flags.usb=-DUIAP_WEBHID_ONLY
 CH32V003.menu.usb.kbd=Keyboard+Mouse
 CH32V003.menu.usb.kbd.build.flags.usb=-DUIAP_COMPOSITE_HID
 CH32V003.menu.usb.kbdweb=Keyboard+Mouse+WebHID

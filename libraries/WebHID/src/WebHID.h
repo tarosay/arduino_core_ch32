@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include "uiapusb.h"
 
-#ifndef UIAP_WEBHID
-#error "WebHID ライブラリを使うには: Tools > Board Version Select > V1.4 + WebHID (EP3) を選択してください"
+#if !defined(UIAP_WEBHID) && !defined(UIAP_WEBHID_ONLY)
+#error "WebHID ライブラリを使うには: Tools > USB > WebHID Only または Keyboard+Mouse+WebHID を選択してください"
 #endif
 
 /**

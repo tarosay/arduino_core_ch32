@@ -39,7 +39,7 @@ static const uint8_t device_descriptor[] = {
 	0x0, 0x0, 0x0,
 	0x08,
 	0x09, 0x12,    // ID Vendor
-	0x04, 0xd0,    // ID Product 0xd004 = UIAPduino SD+WebHID
+	0x04, 0xd0,    // ID Product 0xd004 = UIAPduino WebHID
 	0x01, 0x00,
 	1, 2, 3, 1,
 };
@@ -76,8 +76,8 @@ static const uint8_t config_descriptor[] = {
 };
 
 #define STR_MANUFACTURER u"UIAP"
-#define STR_PRODUCT      u"UIAPduino SD+WebHID"
-#define STR_SERIAL       u"SDHID000"
+#define STR_PRODUCT      u"UIAPduino WebHID"
+#define STR_SERIAL       u"WOHID000"
 
 struct usb_string_descriptor_struct {
 	uint8_t bLength;

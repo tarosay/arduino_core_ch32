@@ -303,10 +303,22 @@ void setup() {
 void loop() {
   if (uart.available()) {
     uint8_t b = uart.read();
-    uart.write(b);         // エコーバック（TX+RX 版の場合）
+    uart.write(b);              // 1 バイト送信
   }
 }
 ```
+
+#### UIAPSerial API
+
+| メソッド | 説明 |
+|---------|------|
+| `uart.begin(baud)` | USART1 初期化 |
+| `uart.available()` | 受信バイト数 |
+| `uart.read()` | 1 バイト受信 |
+| `uart.write(b)` | 1 バイト送信 |
+| `uart.write(buf, n)` | n バイト送信 |
+| `uart.print(str)` | 文字列送信 |
+| `uart.println(str)` | 文字列送信 + CRLF |
 
 ### HardwareSerial（標準 Arduino 互換）
 
@@ -436,6 +448,21 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | Windows | 動作確認済み（Arduino IDE 2.0 以上） |
 | Linux | 動作確認中 |
 | macOS | 動作確認中 |
+
+---
+
+## 更新履歴
+
+### v1.1.4
+- WebHID Only モードの USB product name を `"UIAPduino WebHID"` に修正
+
+### v1.1.2
+- WebHID Only モードのビルドエラーを修正
+
+### v1.1.0
+- ボード定義を 1 エントリに統合（USB モード / UART / 最適化を Tools メニューで選択）
+- No USB（SD ログ・UART 専用）モードを追加
+- `None (use UIAPSerial)` をデフォルト UART 設定として追加（HardwareSerial 約 4,748B 節約）
 
 ---
 

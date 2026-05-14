@@ -113,7 +113,7 @@ void setup() {
 void loop() {
   // ブラウザからデータを受信してエコーバック
   if (WebHID.available()) {
-    uint8_t buf[16];
+    uint8_t buf[32];
     uint8_t len = WebHID.recv(buf, sizeof(buf));
     WebHID.send(buf, len);
   }
@@ -136,14 +136,14 @@ void loop() {
 | `WebHID.send(buf, len)` | Input Report でブラウザへ送信（最大 8 バイト） |
 | `WebHID.send(b0,b1,...,b7)` | 個別バイト指定で送信（最大 8 バイト） |
 | `WebHID.available()` | ブラウザからのデータが届いているか |
-| `WebHID.recv(buf, maxlen)` | Feature Report を受信（最大 16 バイト） |
+| `WebHID.recv(buf, maxlen)` | Feature Report を受信（最大 32 バイト） |
 
 ### USB エンドポイント構成（WebHID Only）
 
 | EP | 方向 | 用途 |
 |----|------|------|
 | EP1 IN | UIAPduino → ブラウザ | Input Report（8 バイト） |
-| EP0 Feature | ブラウザ → UIAPduino | Feature Report（最大 16 バイト） |
+| EP0 Feature | ブラウザ → UIAPduino | Feature Report（最大 32 バイト） |
 
 > **注意:** WebHID は Chrome / Edge のみ対応です。ブラウザ側の実装は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) を参照してください。
 
@@ -242,7 +242,7 @@ void setup() {
 
 void loop() {
   if (WebHID.available()) {
-    uint8_t buf[16];
+    uint8_t buf[32];
     uint8_t len = WebHID.recv(buf, sizeof(buf));
     // 受信内容に応じてキー操作なども可能
   }
@@ -256,7 +256,7 @@ void loop() {
 | EP1 IN | UIAPduino → PC | マウスレポート |
 | EP2 IN | UIAPduino → PC | キーボードレポート |
 | EP3 IN | UIAPduino → ブラウザ | WebHID Input Report（8 バイト） |
-| EP0 Feature | ブラウザ → UIAPduino | WebHID Feature Report（最大 16 バイト） |
+| EP0 Feature | ブラウザ → UIAPduino | WebHID Feature Report（最大 32 バイト） |
 
 ---
 
@@ -452,6 +452,14 @@ digitalWrite(GPIO_PIN_6, HIGH);
 ---
 
 ## 更新履歴
+
+### v1.1.5
+- **Feature Report サイズを 16 → 32 バイトに拡張**（`usb_config.h` / `uiapusb.c`）  
+  長いファイル名（LFN）転送に対応
+- **`uiapwebhid_send()` にタイムアウト追加**（`uiapusb.c`）  
+  USB ホスト未接続（モバイルバッテリー等）時の無限ループを防止し、スタンドアロン動作を実現
+- **SDmin: SD 書き込みタイムアウトを延長**（`SDmin.h`）  
+  6MHz SPI クロック時の書き込みタイムアウトを ~43ms → ~266ms に修正（SD スペック 250ms 準拠）
 
 ### v1.1.4
 - WebHID Only モードの USB product name を `"UIAPduino WebHID"` に修正

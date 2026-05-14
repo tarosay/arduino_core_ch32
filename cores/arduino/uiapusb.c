@@ -197,8 +197,8 @@ void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint,
 
 void uiapwebhid_send(const uint8_t *buf, uint8_t len)
 {
-    /* 前の送信が完了するまで待つ */
-    while (webhid_tx_pending) {}
+    /* 前の送信が完了するまで待つ（ホスト未接続時のハング防止のためタイムアウト付き） */
+    for (uint32_t t = 0; webhid_tx_pending && t < 200000UL; t++) {}
     if (len > 8) len = 8;
     for (int i = 0; i < len; i++) webhid_tx_buf[i] = buf[i];
     for (int i = len; i < 8;  i++) webhid_tx_buf[i] = 0;
@@ -330,7 +330,8 @@ void usb_handle_user_data(struct usb_endpoint *e, int current_endpoint,
 
 void uiapwebhid_send(const uint8_t *buf, uint8_t len)
 {
-    while (webhid_tx_pending) {}
+    /* ホスト未接続時のハング防止のためタイムアウト付き */
+    for (uint32_t t = 0; webhid_tx_pending && t < 200000UL; t++) {}
     if (len > 8) len = 8;
     for (int i = 0; i < len; i++) webhid_tx_buf[i] = buf[i];
     for (int i = len; i < 8;  i++) webhid_tx_buf[i] = 0;

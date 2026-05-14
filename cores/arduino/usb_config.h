@@ -44,7 +44,7 @@ static const uint8_t device_descriptor[] = {
 	1, 2, 3, 1,
 };
 
-// Vendor HID: EP1 IN 8 bytes + Feature 16 bytes
+// Vendor HID: EP1 IN 8 bytes + Feature 32 bytes
 static const uint8_t webhid_hid_desc[] = {
 	0x06, 0x00, 0xFF,
 	HID_USAGE     ( 0x01 ),
@@ -54,7 +54,7 @@ static const uint8_t webhid_hid_desc[] = {
 		HID_USAGE       ( 0x02 ),
 		HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
 		HID_REPORT_SIZE ( 8 ),
-		HID_REPORT_COUNT( 16 ),
+		HID_REPORT_COUNT( 32 ),
 		HID_USAGE       ( 0x03 ),
 		HID_FEATURE     ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
 	HID_COLLECTION_END,
@@ -245,7 +245,7 @@ static const uint8_t keyboard_hid_desc[] = {
 #ifdef UIAP_WEBHID
 // Vendor-specific HID for WebHID (EP3)
 // Input Report:  8 bytes UIAPduino → Web (via EP3 IN)
-// Feature Report: 16 bytes Web → UIAPduino (via EP0 SET_REPORT)
+// Feature Report: 32 bytes Web → UIAPduino (via EP0 SET_REPORT)
 static const uint8_t webhid_hid_desc[] = {
 	0x06, 0x00, 0xFF,                  // Usage Page (Vendor 0xFF00) 2-byte encoding
 	HID_USAGE     ( 0x01 ),
@@ -255,9 +255,9 @@ static const uint8_t webhid_hid_desc[] = {
 		HID_REPORT_COUNT( 8 ),
 		HID_USAGE       ( 0x02 ),
 		HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
-		// Feature Report: 16 bytes (no report ID)
+		// Feature Report: 32 bytes (no report ID)
 		HID_REPORT_SIZE ( 8 ),
-		HID_REPORT_COUNT( 16 ),
+		HID_REPORT_COUNT( 32 ),
 		HID_USAGE       ( 0x03 ),
 		HID_FEATURE     ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),
 	HID_COLLECTION_END,

@@ -86,13 +86,13 @@ static volatile uint8_t keyboard_report[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 static volatile uint8_t webhid_tx_buf[8] = {0};
 // TX フラグ: main がセット、ISR がクリア (1フラグのみ・競合なし)
 static volatile uint8_t webhid_tx_pending = 0;
-// Feature Report 受信: Web → UIAPduino (最大 16 bytes)
-static volatile uint8_t webhid_rx_buf[16];
+// Feature Report 受信: Web → UIAPduino (最大 32 bytes)
+static volatile uint8_t webhid_rx_buf[32];
 static volatile uint8_t webhid_rx_len  = 0;
 static volatile uint8_t webhid_rx_ready = 0;
 // SET_REPORT が来たことを示すフラグ (ISR セット、main クリア)
 static volatile uint8_t webhid_set_report_pending = 0;
-// マルチパケット対応: EP0 max packet = 8 bytes なので 16 bytes は 2 分割で届く
+// マルチパケット対応: EP0 max packet = 8 bytes なので 32 bytes は 4 分割で届く
 static volatile uint8_t webhid_rx_offset       = 0;
 static volatile uint8_t webhid_rx_expected_len = 0;
 #endif // UIAP_WEBHID
@@ -147,7 +147,7 @@ void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen,
     (void)e;
     (void)lValueLSBIndexMSB;
     /* reqLen = wLength (期待するデータ長) を保存し、オフセットをリセット */
-    webhid_rx_expected_len = (reqLen > 16) ? 16 : (uint8_t)reqLen;
+    webhid_rx_expected_len = (reqLen > 32) ? 32 : (uint8_t)reqLen;
     webhid_rx_offset       = 0;
     webhid_set_report_pending = 1;
 }
@@ -269,7 +269,7 @@ void uiapkbd_keyboard_clear(void)
 
 static volatile uint8_t webhid_tx_buf[8]        = {0};
 static volatile uint8_t webhid_tx_pending        = 0;
-static volatile uint8_t webhid_rx_buf[16];
+static volatile uint8_t webhid_rx_buf[32];
 static volatile uint8_t webhid_rx_len            = 0;
 static volatile uint8_t webhid_rx_ready          = 0;
 static volatile uint8_t webhid_set_report_pending = 0;
@@ -296,7 +296,7 @@ void usb_handle_hid_set_report_start(struct usb_endpoint *e, int reqLen,
                                       uint32_t lValueLSBIndexMSB)
 {
     (void)e; (void)lValueLSBIndexMSB;
-    webhid_rx_expected_len = (reqLen > 16) ? 16 : (uint8_t)reqLen;
+    webhid_rx_expected_len = (reqLen > 32) ? 32 : (uint8_t)reqLen;
     webhid_rx_offset       = 0;
     webhid_set_report_pending = 1;
 }

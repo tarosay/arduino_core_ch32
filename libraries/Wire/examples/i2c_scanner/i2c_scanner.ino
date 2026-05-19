@@ -1,7 +1,9 @@
 // I2C Scanner for UIAPduino (CH32V003F4)
 //
 // Scans all 7-bit I2C addresses (0x08..0x77) and reports found devices
-// via WebHID. Repeats the scan every second.
+// via WebHID. Repeats the scan every second with a scan counter.
+// Wire.end()/Wire.begin() is called each cycle to prevent I2C peripheral
+// lockup caused by accumulated NACKs from non-existing addresses.
 //
 // Original concept by Nick Gammon (2011).
 // Adapted for CH32V003 UIAPduino with WebHID output.
@@ -32,11 +34,17 @@ void setup()
   hid.Println("SDA=PC1(D3) SCL=PC2(D4)");
   hid.Println("---");
 
-  Wire.begin();
+  uint32_t scanCount = 0;
 
   while (true)
   {
+    // I2C ペリフェラルをサイクルごとにリセット（連続 NACK によるロックアップを防止）
+    Wire.end();
+    Wire.begin();
+
+    scanCount++;
     uint8_t count = 0;
+
     for (uint8_t addr = 8; addr < 120; addr++)
     {
       Wire.beginTransmission(addr);
@@ -49,7 +57,9 @@ void setup()
       }
     }
 
-    hid.Print("Scan done. Found ");
+    hid.Print("Scan ");
+    hid.Print((int)scanCount);
+    hid.Print(": Found ");
     hid.Print(count);
     hid.Println(" device(s).");
     hid.Println("---");

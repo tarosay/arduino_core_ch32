@@ -1,7 +1,6 @@
 /*
  *******************************************************************************
- * UIAPduino SD+WebHID variant
- * Based on CH32V003F4 -- SPI/UART enabled for SD card + WebHID debug
+ * UIAPduino variant for CH32V003F4
  *******************************************************************************
  */
 #pragma once
@@ -10,7 +9,7 @@
 #define                         ADC_MODULE_ENABLED
 #define                         UART_MODULE_ENABLED
 #define                         SPI_MODULE_ENABLED
-// #define                      I2C_MODULE_ENABLED
+#define                         I2C_MODULE_ENABLED
 #define                         TIM_MODULE_ENABLED
 
 /* CH32V003F4 Pin definitions */

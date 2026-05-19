@@ -1,5 +1,26 @@
 # Wire (I2C) library for UIAPduino (CH32V003F4)
 
+## Version history
+
+### v1.2.0 (2026-05-19)
+First fully working release of I2C on UIAPduino. Both master and slave
+modes were completely non-functional in v1.1.5 and earlier.
+
+Root cause: I2C ISRs were declared with
+`__attribute__((interrupt("WCH-Interrupt-fast")))`, which uses the WCH
+PFIC HPE mechanism and fires even when MIE=0. This preempted rv003usb's
+`EXTI7_0_IRQHandler` mid-bit-sampling, corrupting USB packets and
+disconnecting HID on every I2C transaction.
+
+Fix: all four I2C ISRs changed to `__attribute__((interrupt))` (standard
+RISC-V), which respects MIE and cannot preempt the USB handler.
+
+Additional hardening: ITBUFEN=0 (prevents interrupt storms), NVIC_EnableIRQ
+called after I2C_Init()+I2C_Cmd(ENABLE) (prevents spurious ISR on PE cycle).
+
+New examples: `i2c_scanner`, `i2c_slave_test`, `i2c_master_test`,
+`i2c_slave_diag`, `i2c_probe_test`.
+
 Arduino-compatible Wire library for the UIAPduino board based on the WCH CH32V003F4 RISC-V microcontroller.
 
 ## Wiring

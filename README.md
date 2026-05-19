@@ -523,6 +523,16 @@ digitalWrite(GPIO_PIN_6, HIGH);
 - **修正**: variant ディレクトリ名を `CH32V003F4_SD` → `CH32V003F4` にリネーム（他の型番の命名規則に統一）
 - **修正**: `variant_CH32V003F4.h` で `I2C_MODULE_ENABLED` を有効化  
   コメントアウトされていたため `PinMap_I2C_SDA` / `PinMap_I2C_SCL` が未定義となり、Wire を使うスケッチすべてでリンクエラーが発生していた（v1.2.0 の不具合）
+- **修正**: `variant_CH32V003F4.h` に `PIN_WIRE_SDA=PC1`・`PIN_WIRE_SCL=PC2` を追加  
+  未定義のままでは `Wire.begin()` が誤ったピン（USB D-/UART TX）を使いハングしていた
+- **修正**: `boards.txt` に `-DCPLUSPLUS` フラグを追加  
+  `__libc_init_array()` を実行させることで `TwoWire` のグローバルコンストラクタが動作し、`Wire.begin()` が確実に初期化される
+- **修正**: `cores/arduino/abi.cpp` の `__cxa_pure_virtual` / `__cxa_deleted_virtual` に `__weak__` 属性を追加  
+  `-DCPLUSPLUS` 追加時に `ch32fun.c` との重複シンボルリンクエラーを回避
+- **修正**: `cores/arduino/uiapusb.c` に `GetTick()` オーバーライドを追加  
+  `SysTick->CNT ÷ 48000` でミリ秒を計算（割り込みなし）。SysTick 割り込みを有効化すると rv003usb のビットバンギングが破壊されるため、割り込みを使わない方式を採用。`millis()` および I2C タイムアウトが正常動作する
+- **修正**: `Wire.h` / `Wire.cpp` に `begin(int, int)` オーバーロードを追加  
+  `Wire.begin(PC1, PC2)` が C++ オーバーロード解決で `begin(int addr, bool generalCall)` に誤解決されてスレーブモードになる問題を修正
 
 ### v1.2.0
 - **Wire (I2C) ライブラリを初めて動作させた**（マスター・スレーブともに v1.1.5 以前は完全に動作不可）

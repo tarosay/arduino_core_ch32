@@ -501,8 +501,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | i2c_scanner | 全 I2C アドレスをスキャンして WebHID に表示 |
 | i2c_slave_test | スレーブ: LED 点滅間隔を受信・返答 |
 | i2c_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
-| i2c_slave_diag | スレーブ診断用（ISR 安全なフラグ方式 + レジスタダンプ） |
-| i2c_probe_test | 指定アドレスへの繰り返しプローブで安定性確認 |
+| i2c_BMP280_test | BMP280 センサの温度・気圧を 250ms ごとに WebHID へ出力 |
 
 ---
 
@@ -533,6 +532,8 @@ digitalWrite(GPIO_PIN_6, HIGH);
   `SysTick->CNT ÷ 48000` でミリ秒を計算（割り込みなし）。SysTick 割り込みを有効化すると rv003usb のビットバンギングが破壊されるため、割り込みを使わない方式を採用。`millis()` および I2C タイムアウトが正常動作する
 - **修正**: `Wire.h` / `Wire.cpp` に `begin(int, int)` オーバーロードを追加  
   `Wire.begin(PC1, PC2)` が C++ オーバーロード解決で `begin(int addr, bool generalCall)` に誤解決されてスレーブモードになる問題を修正
+- **Wire examples 追加**: `i2c_scanner`, `i2c_slave_test`, `i2c_master_test`, `i2c_BMP280_test`  
+  BMP280（温度・気圧センサ）の読み取りサンプルを新規追加。`<math.h>` の `powf()` は 16KB Flash を超過するため高度計算はコメントのみ収録
 
 ### v1.2.0
 - **Wire (I2C) ライブラリを初めて動作させた**（マスター・スレーブともに v1.1.5 以前は完全に動作不可）
@@ -540,7 +541,6 @@ digitalWrite(GPIO_PIN_6, HIGH);
   `WCH-Interrupt-fast` は MIE=0 でも割り込みを発火させる WCH PFIC HPE 機構を使用しており、  
   rv003usb（ソフトウェア USB）のビットサンプリング処理を横取りして USB HID を切断していた
 - **追加対策**: ITBUFEN=0（割り込みストーム防止）、NVIC_EnableIRQ を I2C_Init() 後に移動（スプリアス ISR 防止）
-- **Wire examples 追加**: `i2c_scanner`, `i2c_slave_test`, `i2c_master_test`, `i2c_slave_diag`, `i2c_probe_test`
 - **Wire/README.md 追加**: 配線・API・バイトオーダー・ISR コールバック注意事項・rv003usb 互換性の解説
 
 ### v1.1.5

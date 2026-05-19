@@ -518,6 +518,12 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
+### v1.2.1（最新）
+
+- **修正**: variant ディレクトリ名を `CH32V003F4_SD` → `CH32V003F4` にリネーム（他の型番の命名規則に統一）
+- **修正**: `variant_CH32V003F4.h` で `I2C_MODULE_ENABLED` を有効化  
+  コメントアウトされていたため `PinMap_I2C_SDA` / `PinMap_I2C_SCL` が未定義となり、Wire を使うスケッチすべてでリンクエラーが発生していた（v1.2.0 の不具合）
+
 ### v1.2.0
 - **Wire (I2C) ライブラリを初めて動作させた**（マスター・スレーブともに v1.1.5 以前は完全に動作不可）
 - **根本原因修正**: I2C ISR の `WCH-Interrupt-fast` 属性を標準割り込み属性に変更  

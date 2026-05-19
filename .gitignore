@@ -1,3 +1,8 @@
 .vscode
 *.zip
 .claude/
+
+# Wire: temporary test sketches (not for release)
+libraries/Wire/examples/i2c_read_test/
+libraries/Wire/examples/i2c_write_test/
+libraries/Wire/examples/i2c_scanner_test/

@@ -368,6 +368,59 @@ void loop() {
 
 ---
 
+## Wire (I2C) ライブラリ
+
+`Wire.h` を使って I2C マスター・スレーブ通信ができます。  
+**v1.2.0 で初めて動作するようになりました**（v1.1.5 以前は完全に動作不可）。
+
+```
+SDA: PC1 (D3)  ---[4.7kΩ]--- 3.3V
+SCL: PC2 (D4)  ---[4.7kΩ]--- 3.3V
+```
+
+### マスター
+
+```cpp
+#include <Wire.h>
+
+Wire.begin();
+
+Wire.beginTransmission(0x33);
+Wire.write(data, length);
+uint8_t err = Wire.endTransmission(); // 0=OK, 2=NACK, 4=timeout
+
+uint8_t n = Wire.requestFrom(0x33, (uint8_t)4);
+while (Wire.available()) {
+    uint8_t b = Wire.read();
+}
+```
+
+### スレーブ
+
+```cpp
+#include <Wire.h>
+
+void onReceive(int n) {
+    // ISR コンテキスト — hid.Print() 等のブロッキング呼び出し禁止
+    while (n--) Wire.read();
+}
+
+void onRequest() {
+    Wire.write(data, length);
+}
+
+Wire.begin(0x33);
+Wire.onReceive(onReceive);
+Wire.onRequest(onRequest);
+```
+
+> **注意:** `onReceive` / `onRequest` は割り込みハンドラから呼ばれます。  
+> `hid.Print()` 等は呼ばず、フラグを立てて `loop()` から出力してください。
+
+詳細は `libraries/Wire/README.md` を参照してください。
+
+---
+
 ## コアの独自改良点
 
 ### `pinDisconnectDebug(uint32_t pin)`
@@ -439,6 +492,18 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | ToneDuration | ドレミスケールを順番に演奏 |
 | ToneNoTone | `tone()` / `noTone()` を繰り返す停止・再開 |
 
+### Wire (I2C)
+
+`ファイル` → `スケッチ例` → `Wire` から開けます。
+
+| スケッチ | 内容 |
+|---------|------|
+| i2c_scanner | 全 I2C アドレスをスキャンして WebHID に表示 |
+| i2c_slave_test | スレーブ: LED 点滅間隔を受信・返答 |
+| i2c_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
+| i2c_slave_diag | スレーブ診断用（ISR 安全なフラグ方式 + レジスタダンプ） |
+| i2c_probe_test | 指定アドレスへの繰り返しプローブで安定性確認 |
+
 ---
 
 ## 対応 OS
@@ -452,6 +517,15 @@ digitalWrite(GPIO_PIN_6, HIGH);
 ---
 
 ## 更新履歴
+
+### v1.2.0
+- **Wire (I2C) ライブラリを初めて動作させた**（マスター・スレーブともに v1.1.5 以前は完全に動作不可）
+- **根本原因修正**: I2C ISR の `WCH-Interrupt-fast` 属性を標準割り込み属性に変更  
+  `WCH-Interrupt-fast` は MIE=0 でも割り込みを発火させる WCH PFIC HPE 機構を使用しており、  
+  rv003usb（ソフトウェア USB）のビットサンプリング処理を横取りして USB HID を切断していた
+- **追加対策**: ITBUFEN=0（割り込みストーム防止）、NVIC_EnableIRQ を I2C_Init() 後に移動（スプリアス ISR 防止）
+- **Wire examples 追加**: `i2c_scanner`, `i2c_slave_test`, `i2c_master_test`, `i2c_slave_diag`, `i2c_probe_test`
+- **Wire/README.md 追加**: 配線・API・バイトオーダー・ISR コールバック注意事項・rv003usb 互換性の解説
 
 ### v1.1.5
 - **Feature Report サイズを 16 → 32 バイトに拡張**（`usb_config.h` / `uiapusb.c`）  

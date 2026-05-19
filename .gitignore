@@ -6,3 +6,5 @@
 libraries/Wire/examples/i2c_read_test/
 libraries/Wire/examples/i2c_write_test/
 libraries/Wire/examples/i2c_scanner_test/
+libraries/Wire/examples/i2c_test_1_1/
+libraries/Wire/examples/i2c_test_1_2/

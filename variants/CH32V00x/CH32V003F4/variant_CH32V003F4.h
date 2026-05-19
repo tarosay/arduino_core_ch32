@@ -77,6 +77,14 @@
 #define PIN_SPI_MISO            PC7
 #define PIN_SPI_SCK             PC5
 
+// I2C defaults (I2C1)
+#ifndef PIN_WIRE_SDA
+  #define PIN_WIRE_SDA          PC1
+#endif
+#ifndef PIN_WIRE_SCL
+  #define PIN_WIRE_SCL          PC2
+#endif
+
 // UART defaults (UART1)
 #define PIN_SERIAL_TX           PD5
 #define PIN_SERIAL_RX           PD6

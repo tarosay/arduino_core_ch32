@@ -56,6 +56,15 @@ void TwoWire::begin(uint32_t sda, uint32_t scl)
   begin();
 }
 
+void TwoWire::begin(int sda, int scl)
+{
+  // Explicit int,int overload to prevent Wire.begin(PC1,PC2) from resolving
+  // to begin(int address, bool generalCall) due to C++ overload resolution.
+  _i2c.sda = digitalPinToPinName((uint32_t)sda);
+  _i2c.scl = digitalPinToPinName((uint32_t)scl);
+  begin();
+}
+
 void TwoWire::begin(bool generalCall)
 {
   begin(MASTER_ADDRESS, generalCall);

@@ -38,6 +38,14 @@ static void usb_disconnect(void)
     GPIOD->BCR = (1u << 4);             /* D- = Low */
 }
 
+// GetTick()をSysTick->CNT(48MHz自由動作)から計算してオーバーライドする。
+// SysTick割り込みを有効化するとUSBソフトウェアスタックのタイミングが壊れるため、
+// 割り込みなしで使えるこの方法でGetTick()/millis()/I2Cタイムアウトを動作させる。
+uint64_t GetTick(void)
+{
+    return SysTick->CNT / (FUNCONF_SYSTEM_CORE_CLOCK / 1000);
+}
+
 void uiap_core_begin(void)
 {
     if (g_uiap_core_inited) return;

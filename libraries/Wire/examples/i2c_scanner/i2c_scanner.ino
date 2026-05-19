@@ -1,60 +1,61 @@
-
-// I2C Scanner
-// Written by Nick Gammon
-// Date: 20th April 2011
-
-// source: http://arduino-info.wikispaces.com/LCD-Blue-I2C
-
-// MMOLE: CH32 Support I2C scanning using Wire.endTransmission() without sending data
-// CH32 changes required in libraries/Wire/src/utility/twi.c
-//  - timeout on an addresses should release the bus
-//  - allow only sending the address (without actual data)
-//  - smaller timeout: I2C_TIMEOUT_TICK 25 (was 100ms)
-// Note: Currently there's no support for Wire.setWireTimeout(timeout, reset_on_timeout)
-// https://www.arduino.cc/reference/en/language/functions/communication/wire/setwiretimeout/
-// Inspiration from https://github.com/mockthebear/easy-ch32v003/tree/main/examples/i2c_scanner
-
-
+// I2C Scanner for UIAPduino (CH32V003F4)
+//
+// Scans all 7-bit I2C addresses (0x08..0x77) and reports found devices
+// via WebHID. Repeats the scan every second.
+//
+// Original concept by Nick Gammon (2011).
+// Adapted for CH32V003 UIAPduino with WebHID output.
+//
+// Wiring:
+//   SDA: PC1 (D3)
+//   SCL: PC2 (D4)
+//   Pull-up: 4.7kOhm from SDA and SCL to 3.3V
 
 #include <Wire.h>
+#include <WebHID.h>
+#include "Hid.h"
 
-void setup() {
-  Serial.begin (115200);
+static void printHex(uint8_t v)
+{
+  const char *hex = "0123456789ABCDEF";
+  char buf[5] = {'0','x', hex[(v>>4)&0xF], hex[v&0xF], 0};
+  hid.Print(buf);
+}
 
-  // Leonardo: wait for serial port to connect
-  while (!Serial) 
+void setup()
+{
+  WebHID.begin();
+  delay(5000);
+
+  hid.Clear();
+  hid.Println("I2C Scanner (UIAPduino)");
+  hid.Println("SDA=PC1(D3) SCL=PC2(D4)");
+  hid.Println("---");
+
+  Wire.begin();
+
+  while (true)
+  {
+    uint8_t count = 0;
+    for (uint8_t addr = 8; addr < 120; addr++)
     {
+      Wire.beginTransmission(addr);
+      if (Wire.endTransmission() == 0)
+      {
+        hid.Print("Found: ");
+        printHex(addr);
+        hid.Println();
+        count++;
+      }
     }
 
-  Serial.println ();
-  Serial.println ("I2C scanner. Scanning ...");
-  
-  Wire.begin();
-  while(true)
-  {
+    hid.Print("Scan done. Found ");
+    hid.Print(count);
+    hid.Println(" device(s).");
+    hid.Println("---");
 
-  byte count = 0;
-  for (byte i = 8; i < 120; i++)
-  {
-    Wire.beginTransmission (i);
-    if (Wire.endTransmission () == 0)
-      {
-      Serial.print ("Found address: ");
-      Serial.print (i, DEC);
-      Serial.print (" (0x");
-      Serial.print (i, HEX);
-      Serial.println (")");
-      count++;
-      delay (1);  // maybe unneeded?
-      } // end of good response
-  } // end of for loop
-  Serial.println ("Done.");
-  Serial.print ("Found ");
-  Serial.print (count, DEC);
-  Serial.println (" device(s).");
-  delay(1000);
-  Serial.println ("Scanning again...");
+    delay(1000);
   }
-}  // end of setup
+}
 
 void loop() {}

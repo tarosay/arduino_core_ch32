@@ -187,14 +187,26 @@ void i2c_custom_init(i2c_t *obj, uint32_t timing, uint32_t addressingMode, uint3
         handle->Init.I2C_Ack             = I2C_Ack_Enable;
         handle->Init.I2C_AcknowledgedAddress = addressingMode;
 
+        /* Init the I2C first, THEN enable interrupts.
+         * I2C_Init does a PE disable/enable cycle (CTLR1). If interrupts are
+         * armed before I2C_Init, the PE rising edge can fire a spurious ISR
+         * before OADDR1 / ACK are configured → slave hangs at startup.
+         * MMOLE: moved interrupt setup to AFTER I2C_Init + I2C_Cmd(ENABLE).
+         */
+        I2C_Init(obj->i2c, &(handle->Init));
+        I2C_Cmd(obj->i2c,ENABLE);
+
 #if OPT_I2C_SLAVE // MMOLE: was 0 (all calls were commented out)
 		// MMOLE: enable/setup interrupts. Note: all lines within the if were commented out
 		if(obj->isMaster==0)
 		{
           // MMOLE: Enable I2C interrupts (used value is supported by all CH32's; followed ch32v003fun i2c_slave example by @cnlohr)
-          obj->i2c->CTLR2 |= I2C_CTLR2_ITBUFEN | I2C_CTLR2_ITEVTEN | I2C_CTLR2_ITERREN;
-		  
-          /* Interruption is temporarily not supported */ 
+          // MMOLE: ITBUFEN=0 (disabled). With ITBUFEN=1 in slave mode, TXE fires immediately
+          // on init (transmit buffer empty, TRA=0 so DR write cannot clear it) → infinite ISR loop → hang.
+          // MMOLE: ITBUFEN=0, ITEVTEN=1, ITERREN=1 → C2 should read 0x0330 (with FREQ=0x30 for 48MHz)
+          obj->i2c->CTLR2 |= /*I2C_CTLR2_ITBUFEN |*/ I2C_CTLR2_ITEVTEN | I2C_CTLR2_ITERREN;
+
+          /* Interruption is temporarily not supported */
           //NVIC_SetPriority(obj->irq, I2C_IRQ_PRIO, I2C_IRQ_SUBPRIO);
           NVIC_EnableIRQ(obj->irq); // Event interrupt
 
@@ -202,10 +214,6 @@ void i2c_custom_init(i2c_t *obj, uint32_t timing, uint32_t addressingMode, uint3
           NVIC_EnableIRQ(obj->irqER); // Error interrupt
 		}
 #endif
-
-        /* Init the I2C */
-        I2C_Init(obj->i2c, &(handle->Init));
-        I2C_Cmd(obj->i2c,ENABLE);
 
         /* Initialize default values */
         //obj->slaveRxNbData = 0;		// MMOLE: was commented
@@ -283,13 +291,17 @@ i2c_status_e i2c_master_write(i2c_t *obj, uint8_t dev_address,
     I2C_AcknowledgeConfig( obj->handle.Instance, ENABLE ); 
     while(I2C_GetFlagStatus(obj->handle.Instance, I2C_FLAG_BUSY) != RESET)  //wait for busy
     {
-        if((GetTick()-tickstart) > I2C_TIMEOUT_TICK) 
+        if((GetTick()-tickstart) > I2C_TIMEOUT_TICK)
         {
-/**/
-// MMOLE: To allow I2C scanning, when a start condition times out the bus needs to be released
-          if(sendstop)  
-            I2C_GenerateSTOP(obj->handle.Instance, ENABLE);
-/**/
+// MMOLE: BUSY is stuck (not clearing after STOP). Perform I2C peripheral software reset
+// to recover from accumulated error state. This fixes a lockup that occurs after ~44 scan
+// cycles on UIAPduino (CH32V003). Matches root cause: peripheral state machine confused,
+// not necessarily a physical bus issue. After SWRST + re-init, BUSY clears and scanning
+// can resume. (UIAP 1.0.42 reference does not have this, but scans much slower.)
+          I2C_SoftwareResetCmd(obj->handle.Instance, ENABLE);   // enter SW reset, clears BUSY
+          I2C_SoftwareResetCmd(obj->handle.Instance, DISABLE);  // leave SW reset
+          I2C_Init(obj->handle.Instance, &(obj->handle.Init));  // restore clock speed / config
+          I2C_AcknowledgeConfig(obj->handle.Instance, ENABLE);  // restore ACK
           return I2C_TIMEOUT;
         }
     }
@@ -383,11 +395,19 @@ void i2c_ClearErrorFlags(i2c_t *obj)
 void i2c_ClearStopFlag(i2c_t *obj)
 {   // clear the stop flag
   if(I2C_GetFlagStatus( obj->i2c, I2C_FLAG_STOPF ) !=  RESET)
-  { // Stop detection flag (Slave mode).
-    // STOPF (STOP detection) is cleared by software sequence: a read operation 
-    // to I2C_STAR1 register (I2C_GetFlagStatus()) followed by a write operation 
-    // to I2C_CTLR1 register (I2C_Cmd() to re-enable the I2C peripheral).
-    // -> Since we just read the flag, we only need to (re-)enable.
+  {
+    // STOPF clear sequence (per CH32V003 datasheet):
+    //   Step 1: read STAR1  -- done by I2C_GetFlagStatus(I2C_FLAG_STOPF) above
+    //   Step 2: write CTLR1 -- any write to CTLR1 clears STOPF
+    //
+    // rv003usb ch32v003fun i2c_slave reference (the authoritative CH32V003 example):
+    //   I2C1->CTLR1 &= ~(I2C_CTLR1_STOP);  // just write CTLR1, no SWRST
+    //
+    // Previous note "softer approaches had zero effect" was written when the TXE IRQ storm
+    // (Issue A) was still present. The storm blocked ADDR processing, making STOPF handling
+    // appear to be the cause. Now that the ISR redesign eliminated the TXE storm (ITBUFEN off
+    // + unconditional DR write), SWRST is unnecessary. Use I2C_Cmd(ENABLE) — identical to
+    // UIAP 1.0.42 — which writes CTLR1 (sets PE=1) to satisfy the datasheet requirement.
     I2C_Cmd(obj->i2c, ENABLE);
   }
 }
@@ -635,34 +655,47 @@ void i2c_attachSlaveTxEvent(i2c_t *obj, void (*function)(i2c_t *))
 
 
 
+/* MMOLE: I2C ISRs use __attribute__((interrupt)) — NOT __attribute__((interrupt("WCH-Interrupt-fast"))).
+ *
+ * WHY THIS MATTERS ON UIAPduino (rv003usb software USB):
+ *   rv003usb implements USB via software bit-banging in EXTI7_0_IRQHandler (standard interrupt).
+ *   While that handler runs, the machine-level interrupt enable bit (MIE) is cleared, which
+ *   normally prevents any other interrupt from firing.
+ *
+ *   WCH-Interrupt-fast uses the WCH PFIC "HPE" (High Performance Entry) mechanism. HPE bypasses
+ *   MIE — it fires even when MIE=0. This means an I2C WCH-Interrupt-fast ISR can preempt
+ *   EXTI7_0_IRQHandler mid-execution, corrupting the USB bit-sampling loop (each USB bit is
+ *   only 83 ns at 12 Mbps). Result: USB HID disconnects on every I2C slave probe.
+ *
+ *   With __attribute__((interrupt)) (standard), the I2C ISR respects MIE. It is pended but
+ *   not delivered while the USB handler runs. USB completes cleanly, then I2C runs. Fixed.
+ */
+
 #if defined(I2C1_BASE)
 /**
-* @brief  This function handles I2C1 interrupt.
+* @brief  This function handles I2C1 event interrupt.
 * @param  None
 * @retval None
 */
-void I2C1_EV_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void I2C1_EV_IRQHandler(void) __attribute__((interrupt));
 void I2C1_EV_IRQHandler(void)
 {
 #if OPT_I2C_SLAVE
-   I2C_HandleTypeDef *handle = i2c_handles[I2C1_INDEX];  // MMOLE: was commented
-   // MMOLE: I2C1_EV_IRQHandler is the event handler, handle is an I2C_HandleTypeDef struct containing parameters and pointer to the registers
+   I2C_HandleTypeDef *handle = i2c_handles[I2C1_INDEX];
    static int _nCounterEV1=1;
    _nCounterEV1++;
-   i2c_slave_process(get_i2c_obj(handle));		// process I2C transmissions, for now only events, not errors
+   i2c_slave_process(get_i2c_obj(handle));
 #endif
- }
+}
 /**
-* @brief  This function handles I2C1 interrupt.
+* @brief  This function handles I2C1 error interrupt.
 * @param  None
 * @retval None
 */
-void I2C1_ER_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void I2C1_ER_IRQHandler(void) __attribute__((interrupt));
 void I2C1_ER_IRQHandler(void)
 {
 #if OPT_I2C_SLAVE
-   //I2C_HandleTypeDef *handle = i2c_handles[I2C1_INDEX];  // MMOLE: was commented
-   // MMOLE: I2C1_ER_IRQHandler is the error handler
    static int _nCounterER1=1;
    _nCounterER1++;
 #endif
@@ -672,34 +705,30 @@ void I2C1_ER_IRQHandler(void)
 
 #if defined(I2C2_BASE)
 /**
-* @brief  This function handles I2C2 interrupt.
+* @brief  This function handles I2C2 event interrupt.
 * @param  None
 * @retval None
 */
-void I2C2_EV_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void I2C2_EV_IRQHandler(void) __attribute__((interrupt));
 void I2C2_EV_IRQHandler(void)
 {
 #if OPT_I2C_SLAVE
-   I2C_HandleTypeDef *handle = i2c_handles[I2C2_INDEX];  // MMOLE: was commented
-   // MMOLE: I2C2_EV_IRQHandler is the event handler, handle is an I2C_HandleTypeDef struct containing parameters and pointer to the registers
+   I2C_HandleTypeDef *handle = i2c_handles[I2C2_INDEX];
    static int _nCounterEV2=1;
    _nCounterEV2++;
-   i2c_slave_process(get_i2c_obj(handle));		// process I2C transmissions, for now only events, not errors
-   // MMOLE: tested only using I2C1
+   i2c_slave_process(get_i2c_obj(handle));
 #endif
 }
 
 /**
-* @brief  This function handles I2C2 interrupt.
+* @brief  This function handles I2C2 error interrupt.
 * @param  None
 * @retval None
 */
-void I2C2_ER_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void I2C2_ER_IRQHandler(void) __attribute__((interrupt));
 void I2C2_ER_IRQHandler(void)
 {
 #if OPT_I2C_SLAVE
-   //I2C_HandleTypeDef *handle = i2c_handles[I2C2_INDEX];  // MMOLE: was commented
-   // MMOLE: I2C2_ER_IRQHandler is the error handler
    static int _nCounterER2=1;
    _nCounterER2++;
 #endif

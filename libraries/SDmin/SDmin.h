@@ -451,12 +451,12 @@ bool sm_close_w(void){
   sm_f_open=0;return true;
 }
 
-// ── Delete ───────────────────────────────────────────────────────────────────
-bool sm_del(const char*path){
+// ── Delete (shared impl) ──────────────────────────────────────────────────────
+static bool _sm_del_entry(const char*path,bool want_dir){
   uint32_t dcl;const char*fname;
   if(!_sm_resolve(path,&dcl,&fname)) return false;
   _SmEntry e;
-  if(!_sm_find_cl(dcl,fname,&e,false)) return false;
+  if(!_sm_find_cl(dcl,fname,&e,want_dir)) return false;
   uint32_t cl=e.cluster;
   while(cl>=2&&!_sm_eoc(cl)){uint32_t nx=_sm_fget(cl);_sm_fset(cl,0);cl=nx;}
   if(!_sm_rblk(e.dir_lba)) return false;
@@ -469,6 +469,8 @@ bool sm_del(const char*path){
   }
   return true;
 }
+bool sm_del(const char*path)   { return _sm_del_entry(path,false); }
+bool sm_rmdir(const char*path) { return _sm_del_entry(path,true);  }
 
 // ── Make directory ────────────────────────────────────────────────────────────
 bool sm_mkdir(const char*path){

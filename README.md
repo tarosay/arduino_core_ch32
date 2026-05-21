@@ -421,6 +421,48 @@ Wire.onRequest(onRequest);
 
 ---
 
+## SDmin ライブラリ
+
+Flash サイズ節約に特化した最小限の FAT32 SD ライブラリです。  
+LFN（最大 26 文字のファイル名）とサブディレクトリに対応しています。  
+`Tools > USB > No USB (SD log / UART only)` と組み合わせると Flash を最大限節約できます。
+
+```cpp
+#include "SDmin.h"
+
+#define PIN_SS GPIO_PIN_3  // PC1
+
+void setup() {
+  sm_init(PIN_SS);
+  sm_mount();
+}
+```
+
+### SDmin API
+
+| 関数 | 説明 |
+|------|------|
+| `sm_init(cs)` | SPI + SD カード初期化 |
+| `sm_mount()` | FAT32 パーティションのマウント |
+| `sm_open_w(path)` | ファイルを書き込み用にオープン（上書き） |
+| `sm_write(buf, len)` | データを書き込み（最大 255 バイト） |
+| `sm_close_w()` | ファイルサイズを更新してクローズ |
+| `sm_open_r(path)` | ファイルを読み込み用にオープン |
+| `sm_read(buf, len)` | データを読み込み（最大 255 バイト） |
+| `sm_close_r()` | ファイルクローズ |
+| `sm_del(path)` | ファイルを削除 |
+| `sm_rmdir(path)` | 空のディレクトリを削除 |
+| `sm_mkdir(path)` | ディレクトリを作成 |
+| `sm_list_open(ctx, path)` | ディレクトリ列挙を開始（`path=""` / `NULL` = ルート） |
+| `sm_list_next(ctx, name)` | 次のエントリを取得（戻り値: 1=ファイル / 2=ディレクトリ / 0=終端） |
+
+> **パス指定**: `"FILE.TXT"` または `"DIR/FILE.TXT"` 形式のサブディレクトリパスを指定できます。
+
+> **Flash サイズ**: LTO が有効なため、未使用の関数はビルド時に自動削除されます。  
+> 全関数を使用した場合の増加量は約 5KB 程度です。
+
+---
+
 ## コアの独自改良点
 
 ### `pinDisconnectDebug(uint32_t pin)`
@@ -516,6 +558,11 @@ digitalWrite(GPIO_PIN_6, HIGH);
 ---
 
 ## 更新履歴
+
+### 2026-05-22（SDmin ライブラリ更新）
+
+- **SDmin: `sm_rmdir(path)` 追加** — 空ディレクトリを削除する関数を追加  
+  `sm_del()` と共通実装 `_sm_del_entry()` に統合し、Flash 増加を約 20 バイトに最小化
 
 ### v1.2.1（最新）
 

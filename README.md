@@ -559,12 +559,12 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### 2026-05-22（SDmin ライブラリ更新）
+### v1.2.2（最新）
 
 - **SDmin: `sm_rmdir(path)` 追加** — 空ディレクトリを削除する関数を追加  
   `sm_del()` と共通実装 `_sm_del_entry()` に統合し、Flash 増加を約 20 バイトに最小化
 
-### v1.2.1（最新）
+### v1.2.1
 
 - **修正**: variant ディレクトリ名を `CH32V003F4_SD` → `CH32V003F4` にリネーム（他の型番の命名規則に統一）
 - **修正**: `variant_CH32V003F4.h` で `I2C_MODULE_ENABLED` を有効化  

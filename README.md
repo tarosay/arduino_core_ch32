@@ -516,7 +516,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | KeyboardPractice | キーボード HID 練習（Step ごとにコメントを外す） |
 | KeyboardSwitch | キーボード HID 練習（switch 文で Step 切り替え） |
 
-> **KeyboardPractice / KeyboardSwitch** は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) の練習ページと連携して使います。
+> **KeyboardPractice / KeyboardSwitch** は [UIAPduino WebHID Lab](https://tarosay.github.io/uiap-hid-web/) の練習ページと連携して使えます。
 
 ### WebHID
 

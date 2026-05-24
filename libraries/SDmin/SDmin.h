@@ -451,6 +451,61 @@ bool sm_close_w(void){
   sm_f_open=0;return true;
 }
 
+// ── File open for append (create if not exists) ───────────────────────────────
+bool sm_open_a(const char*path){
+  if(sm_f_open==2) return false;
+  if(sm_f_open==1) sm_f_open=0;
+  uint32_t dcl;const char*fname;
+  if(!_sm_resolve(path,&dcl,&fname)) return false;
+  _SmEntry e;
+  if(!_sm_find_cl(dcl,fname,&e,false)) return sm_open_w(path);
+  sm_f_open=1;sm_f_dir_lba=e.dir_lba;sm_f_dir_ent=e.dir_ent;sm_f_pos=e.size;
+  if(e.size==0||e.cluster<2){
+    sm_f_start=0;sm_f_prev=0;sm_f_cur=0;
+    sm_f_sec=0;sm_f_off=0;memset(sm_buf,0,512);return true;
+  }
+  sm_f_start=e.cluster;
+  uint32_t cl=e.cluster;
+  while(!_sm_eoc(_sm_fget(cl))) cl=_sm_fget(cl);
+  uint32_t off_in_cl=e.size%((uint32_t)sm_spc*512);
+  if(off_in_cl==0){
+    sm_f_prev=cl;sm_f_cur=0;sm_f_sec=0;sm_f_off=0;memset(sm_buf,0,512);return true;
+  }
+  sm_f_cur=cl;sm_f_prev=cl;
+  sm_f_off=(uint16_t)(e.size%512);
+  if(sm_f_off>0){
+    sm_f_sec=(uint8_t)((off_in_cl-1)/512);
+    uint32_t lba=sm_data_lba+(uint32_t)(cl-2)*sm_spc+sm_f_sec;
+    if(!_sm_rblk(lba)){sm_f_open=0;return false;}
+  } else {
+    sm_f_sec=(uint8_t)(off_in_cl/512);memset(sm_buf,0,512);
+  }
+  return true;
+}
+
+// ── File sync (flush partial sector + update dir size, keep file open) ───────
+bool sm_sync_w(void){
+  if(sm_f_open!=1) return false;
+  // 1. Flush current partial sector to SD (sm_buf unchanged by _sm_wblk)
+  if(sm_f_off>0&&sm_f_cur>=2){
+    uint32_t lba=sm_data_lba+(uint32_t)(sm_f_cur-2)*sm_spc+sm_f_sec;
+    if(!_sm_wblk(lba)) return false;
+  }
+  // 2. Update file size in directory entry (sm_buf overwritten with dir sector)
+  if(!_sm_rblk(sm_f_dir_lba)) return false;
+  uint8_t*d=sm_buf+sm_f_dir_ent*32;
+  d[28]=sm_f_pos;d[29]=sm_f_pos>>8;d[30]=sm_f_pos>>16;d[31]=sm_f_pos>>24;
+  if(!_sm_wblk(sm_f_dir_lba)) return false;
+  // 3. Restore data sector so subsequent sm_write continues correctly
+  if(sm_f_off>0&&sm_f_cur>=2){
+    uint32_t lba=sm_data_lba+(uint32_t)(sm_f_cur-2)*sm_spc+sm_f_sec;
+    if(!_sm_rblk(lba)) return false;
+  } else {
+    memset(sm_buf,0,512);
+  }
+  return true;
+}
+
 // ── Delete (shared impl) ──────────────────────────────────────────────────────
 static bool _sm_del_entry(const char*path,bool want_dir){
   uint32_t dcl;const char*fname;

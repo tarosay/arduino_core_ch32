@@ -445,7 +445,9 @@ void setup() {
 | `sm_init(cs)` | SPI + SD カード初期化 |
 | `sm_mount()` | FAT32 パーティションのマウント |
 | `sm_open_w(path)` | ファイルを書き込み用にオープン（上書き） |
+| `sm_open_a(path)` | ファイルを追記用にオープン（存在しない場合は新規作成） |
 | `sm_write(buf, len)` | データを書き込み（最大 255 バイト） |
+| `sm_sync_w()` | 現在のセクタをフラッシュしディレクトリのファイルサイズを更新（ファイルは開いたまま） |
 | `sm_close_w()` | ファイルサイズを更新してクローズ |
 | `sm_open_r(path)` | ファイルを読み込み用にオープン |
 | `sm_read(buf, len)` | データを読み込み（最大 255 バイト） |
@@ -545,6 +547,15 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | i2c_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
 | i2c_BMP280_test | BMP280 センサの温度・気圧を 250ms ごとに WebHID へ出力 |
 
+### SDmin
+
+`ファイル` → `スケッチ例` → `SDmin` から開けます。  
+`Tools > USB > No USB (SD log / UART only)` を選択してビルドしてください。
+
+| スケッチ | 内容 |
+|---------|------|
+| SDLog | UART RX で受信したデータをマイクロSD カードに記録する OpenLog 互換ロガー |
+
 ---
 
 ## 対応 OS
@@ -559,7 +570,14 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.2（最新）
+### v1.2.3（最新）
+
+- **SDmin: `sm_open_a()` 追加** — 既存ファイルへの追記オープン（ファイルが存在しない場合は新規作成）
+- **SDmin: `sm_sync_w()` 追加** — ファイルを開いたまま現在のセクタをフラッシュしディレクトリのファイルサイズを更新（電源断対策）
+- **SDmin: SDLog サンプルスケッチ追加** — UART 受信データを microSD に記録する OpenLog 互換ロガー
+- **EEPROM: サンプルスケッチ削除** — `Serial.print` を使用しており UIAPduino HID 設定でビルドエラーになるため削除
+
+### v1.2.2
 
 - **SDmin: `sm_rmdir(path)` 追加** — 空ディレクトリを削除する関数を追加  
   `sm_del()` と共通実装 `_sm_del_entry()` に統合し、Flash 増加を約 20 バイトに最小化

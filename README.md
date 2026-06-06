@@ -641,6 +641,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 ### v1.2.4（最新）
 
 - **Wiremin ライブラリ追加** — Wire.h の代替となる最小 I2C ドライバ。Flash を **▲6,176 バイト**削減。BMI270（6軸 IMU）が 16KB Flash 内で動作確認済み（15,728 バイト）
+- **HcSr04 ライブラリ追加** — HC-SR04 超音波距離センサ対応。`pulseIn` で ECHO パルス幅を計測し距離（cm）を算出。計測範囲 約 2〜400 cm
 
 ### v1.2.3
 

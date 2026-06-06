@@ -421,6 +421,61 @@ Wire.onRequest(onRequest);
 
 ---
 
+## Wiremin ライブラリ
+
+Wire.h の代替となる最小限の I2C ドライバです。Flash 使用量を大幅に削減します。
+
+### Flash サイズ比較
+
+| ライブラリ | Flash | RAM |
+|---|---|---|
+| Wire.h | 10,620 バイト（64%） | 592 バイト |
+| Wiremin.h | 4,444 バイト（27%） | 428 バイト |
+| **削減量** | **▲ 6,176 バイト** | **▲ 164 バイト** |
+
+### API
+
+```cpp
+#include <Wiremin.h>
+
+// マスター
+Wiremin_begin();                              // 100kHz で初期化
+Wiremin_write(addr7, data, len);             // バイト列送信
+Wiremin_read(addr7, buf, len);              // バイト列受信
+Wiremin_write_reg(addr7, reg, data, len);   // レジスタ書き込み
+Wiremin_read_reg(addr7, reg, buf, len);     // レジスタ読み出し（repeated START）
+Wiremin_probe(addr7);                       // ACK 確認（スキャン用）
+
+// スレーブ
+Wiremin_slave_begin(addr7);  // スレーブとして初期化
+Wiremin_slave_set(reg, val); // 共有レジスタに書き込む
+Wiremin_slave_get(reg);      // 共有レジスタを読み出す
+```
+
+### Wire.h からの移植
+
+| Wire.h | Wiremin.h |
+|---|---|
+| `Wire.begin()` | `Wiremin_begin()` |
+| `Wire.beginTransmission(addr)` + `Wire.write(reg)` + `Wire.write(data, len)` + `Wire.endTransmission()` | `Wiremin_write_reg(addr, reg, data, len)` |
+| `Wire.beginTransmission(addr)` + `Wire.endTransmission(false)` + `Wire.requestFrom(addr, len)` + `Wire.read()` × n | `Wiremin_read_reg(addr, reg, buf, len)` |
+| `Wire.beginTransmission(addr)` + `Wire.endTransmission()` → 0=ACK | `Wiremin_probe(addr)` |
+
+**OLED（SSD1306）例:**
+
+```cpp
+// コマンド送信
+uint8_t cmd = 0xAE;
+Wiremin_write_reg(0x3C, 0x00, &cmd, 1);
+
+// データ送信（128バイト/ページ）
+Wiremin_write_reg(0x3C, 0x40, buf, 128);
+```
+
+> **注意:** Wire.h と同時に使用不可。スレーブモードでは I2C センサを同時接続不可（I2C1 が1つのみ）。
+
+---
+
 ## SDmin ライブラリ
 
 Flash サイズ節約に特化した最小限の FAT32 SD ライブラリです。  
@@ -547,6 +602,19 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | i2c_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
 | i2c_BMP280_test | BMP280 センサの温度・気圧を 250ms ごとに WebHID へ出力 |
 
+### Wiremin
+
+`ファイル` → `スケッチ例` → `Wiremin` から開けます。
+
+| スケッチ | 内容 |
+|---------|------|
+| Wiremin_scanner | 全 I2C アドレスをスキャンして WebHID に表示 |
+| Wiremin_slave_test | スレーブ: LED 点滅間隔を受信・返答 |
+| Wiremin_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
+| Wiremin_BMP280 | BMP280 センサの温度・気圧を WebHID へ出力 |
+| Wiremin_bmi270 | BMI270 6軸 IMU の加速度を WebHID へ出力 |
+| Wiremin_size_test | Flash サイズ計測用（Wire.h との比較に使用） |
+
 ### SDmin
 
 `ファイル` → `スケッチ例` → `SDmin` から開けます。  
@@ -572,6 +640,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ### v1.2.3（最新）
 
+- **Wiremin ライブラリ追加** — Wire.h の代替となる最小 I2C ドライバ。Flash を **▲6,176 バイト**削減。BMI270（6軸 IMU）が 16KB Flash 内で動作確認済み（15,728 バイト）
 - **SDmin: `sm_open_a()` 追加** — 既存ファイルへの追記オープン（ファイルが存在しない場合は新規作成）
 - **SDmin: `sm_sync_w()` 追加** — ファイルを開いたまま現在のセクタをフラッシュしディレクトリのファイルサイズを更新（電源断対策）
 - **SDmin: SDLog サンプルスケッチ追加** — UART 受信データを microSD に記録する OpenLog 互換ロガー

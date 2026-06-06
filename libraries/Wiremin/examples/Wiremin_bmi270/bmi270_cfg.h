@@ -1,4 +1,12 @@
-﻿#pragma once
+﻿/**
+ * Copyright (c) 2021 Bosch Sensortec GmbH. All rights reserved.
+ *
+ * BSD-3-Clause
+ *
+ * Extracted from bmi270.c (v2.71.8, 2021-09-30)
+ * Source: https://github.com/arduino-libraries/Arduino_BMI270_BMM150
+ */
+#pragma once
 #include <stdint.h>
 
 const uint8_t bmi270_config_file[] = {

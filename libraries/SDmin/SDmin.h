@@ -357,6 +357,45 @@ int sm_read(uint8_t*dst,uint8_t len){
 }
 void sm_close_r(void){sm_f_open=0;}
 
+// ── Random access (v1.2.5) ───────────────────────────────────────────────────
+// sm_seek: 読み取りオープン中のファイルの読み位置を pos へ移動
+// ファイル先頭から FAT チェーンを辿るため、シーク自体のコストはクラスタ数に比例
+bool sm_seek(uint32_t pos){
+  if(sm_f_open!=2) return false;
+  if(pos>sm_f_size) pos=sm_f_size;
+  uint32_t cl=sm_f_start;
+  uint32_t skip=pos/(512UL*sm_spc);
+  while(skip--){uint32_t nx=_sm_fget(cl);if(_sm_eoc(nx))return false;cl=nx;}
+  sm_f_cur=cl;
+  uint32_t rem=pos%(512UL*sm_spc);
+  sm_f_sec=(uint8_t)(rem/512);sm_f_off=(uint16_t)(rem%512);sm_f_pos=pos;
+  if(pos<sm_f_size)
+    if(!_sm_rblk(sm_data_lba+(uint32_t)(sm_f_cur-2)*sm_spc+sm_f_sec)) return false;
+  return true;
+}
+
+// sm_write_at: 既存ファイルの pos に len バイトを部分上書き（その場書き換え）
+// - ファイルを開いていない状態でのみ使用可（sm_buf を使うため）
+// - 書き込み範囲は 1 セクタ（512B 境界）内に収まること
+// - ファイルサイズの拡張は不可（pos+len <= ファイルサイズ）
+// - クラスタ解放・ディレクトリ更新を行わないため高速で SD の摩耗も少ない
+bool sm_write_at(const char*path,uint32_t pos,const uint8_t*src,uint16_t len){
+  if(sm_f_open) return false;
+  uint32_t dcl;const char*fname;
+  if(!_sm_resolve(path,&dcl,&fname)) return false;
+  _SmEntry e;
+  if(!_sm_find_cl(dcl,fname,&e,false)) return false;
+  if(pos+len>e.size) return false;
+  if((pos%512)+len>512) return false;
+  uint32_t cl=e.cluster;
+  uint32_t skip=pos/(512UL*sm_spc);
+  while(skip--){uint32_t nx=_sm_fget(cl);if(_sm_eoc(nx))return false;cl=nx;}
+  uint32_t lba=sm_data_lba+(uint32_t)(cl-2)*sm_spc+(uint8_t)((pos/512)%sm_spc);
+  if(!_sm_rblk(lba)) return false;
+  memcpy(sm_buf+(pos%512),src,len);
+  return _sm_wblk(lba);
+}
+
 // sm_read_full: セクタ境界をまたいでも len バイト読む
 static int sm_read_full(uint8_t* dst, uint8_t len) {
   uint8_t got = 0;

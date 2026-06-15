@@ -1,5 +1,5 @@
 /*
- * PWMminBuzzerRemap3.ino — TIM2 Remap3 ピン確認（pin 3 / 9 / 15 / 16）
+ * PWMminPinRemap3.ino — TIM2 Remap3 ピン確認（pin 3 / 9 / 15 / 16）
  *
  * Tools > PWM    = "TIM2 Remap3 (pins 9/15/16)" で使用
  * Tools > U(S)ART = "None" にすること（pin 15/16 が UART TX/RX と競合）

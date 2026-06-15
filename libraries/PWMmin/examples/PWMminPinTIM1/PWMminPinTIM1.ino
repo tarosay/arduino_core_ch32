@@ -1,8 +1,8 @@
 /*
- * PWMminBuzzerTIM1.ino — TIM1 残りピン確認（pin 0 / 6 / 12）
+ * PWMminPinTIM1.ino — TIM1 ピン確認（pin 0 / 6 / 12）
  *
  * Tools > PWM = "TIM2 Default (pin 2 / PC0)" で使用
- * pin 5 (TIM1-CH3) は PWMminBuzzer.ino で確認済み。
+ * ビープ回数で、どのピンに書き込みができているか識別する。
  *
  * 接続:
  *   ブザーを確認したいピンに差し替えながら使用

@@ -1,21 +1,26 @@
 /*
- * PWMminBasic.ino — PWMmin Default マッピング サンプル（5ピン制御）
+ * PWMminRemap3.ino — PWMmin TIM2 Remap3 マッピング サンプル（7ピン制御）
  *
- * Tools > PWM = "TIM2 Default (pin 2 / PC0)" で使用
+ * Tools > PWM = "TIM2 Remap3 (pins 9/15/16)" で使用
+ * Tools > U(S)ART = "None" にすること（pin 15/16 が UART TX/RX と競合するため）
  *
- * 制御ピン（5つ）:
+ * 制御ピン（7つ）:
  *   TIM1: pin  0 (PA1)  TIM1-CH2
  *         pin  5 (PC3)  TIM1-CH3
  *         pin  6 (PC4)  TIM1-CH4
  *         pin 12 (PD2)  TIM1-CH1
- *   TIM2: pin  2 (PC0)  TIM2-CH3  ← LED_BUILTIN
+ *   TIM2: pin  9 (PC7)  TIM2-CH2  ← SPI MISO
+ *         pin 15 (PD5)  TIM2-CH4  ← UART TX（U(S)ART=None のこと）
+ *         pin 16 (PD6)  TIM2-CH3  ← UART RX（U(S)ART=None のこと）
  *
- * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=default,opt=oslto
+ * ※ pin 3 (PC1 / TIM2-CH1) は省略（ボード上 2.2kΩ プルアップあり）
+ *
+ * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=remap3,xserial=none,opt=oslto
  */
 
 #include <PWMmin.h>
 
-static const uint8_t pins[] = {0, 5, 6, 12, 2};
+static const uint8_t pins[] = {0, 5, 6, 12, 9, 15, 16};
 static const uint8_t N = sizeof(pins);
 
 void setup() {}
@@ -46,8 +51,8 @@ void loop() {
   Pwm_freq_TIM1(800);                                     // TIM1 → 800 Hz
   Pwm_freq_TIM2(200);                                     // TIM2 → 200 Hz
   for (int d = 0; d <= 255; d++) {
-    Pwm_write(5, (uint8_t)d);           // TIM1 (800 Hz)
-    Pwm_write(2, (uint8_t)(255 - d));   // TIM2 (200 Hz)
+    Pwm_write(5,  (uint8_t)d);          // TIM1 (800 Hz)
+    Pwm_write(9,  (uint8_t)(255 - d));  // TIM2 (200 Hz)
     delay(4);
   }
   Pwm_freq(1000);                                         // 周波数をリセット

@@ -11,7 +11,7 @@
  *   Phase 1: ユニゾン  — 両方同じ音でドレミファソラシド（Pwm_freq / Pwm_write 確認）
  *   Phase 2: 和音      — Pwm_freq_TIM1 / Pwm_freq_TIM2 で別音程を同時に鳴らす
  *   Phase 3: 交互      — 片方ずつ Pwm_stop しながら交互に鳴らす
- *   Phase 4: 音量差    — duty 16 / 64 / 128 の音量変化を耳で確認
+ *   Phase 4: 音量スイープ — duty 1→128→1 で音量変化を確認
  *
  * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=default,opt=oslto
  */
@@ -75,15 +75,19 @@ void loop() {
   }
   silence(600);
 
-  /* ── Phase 4: duty による音量差（ド / 262 Hz）──────────────────────── */
-  static const uint8_t duties[] = {16, 64, 128};
-  Pwm_freq(262);
-  for (uint8_t i = 0; i < 3; i++) {
-    Pwm_write(PIN_TIM1, duties[i]);
-    Pwm_write(PIN_TIM2, duties[i]);
-    delay(500);
-    silence(200);
+  /* ── Phase 4: 音量スイープ（duty 1→128→1）────────────────────────── */
+  Pwm_freq(440);  /* ラ (A4) */
+  for (uint8_t d = 1; d <= 128; d++) {
+    Pwm_write(PIN_TIM1, d);
+    Pwm_write(PIN_TIM2, d);
+    delay(15);
   }
+  for (uint8_t d = 128; d >= 1; d--) {
+    Pwm_write(PIN_TIM1, d);
+    Pwm_write(PIN_TIM2, d);
+    delay(15);
+  }
+  silence(300);
 
   delay(1000);
 }

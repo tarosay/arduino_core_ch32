@@ -28,9 +28,12 @@
  *   Pwm_tone(pin, hz, ms)     — tone() 相当、ms 後に自動停止（ノンブロッキング）
  *                               TIM1・TIM2 独立管理のため2音同時に使用可能
  *   Pwm_tone_update()         — loop() 内で毎回呼ぶ（停止タイミング処理）
- *   Pwm_servo(pin, angle)     — サーボ角度指定（0–180°）、事前に Pwm_freq(500) 必須
- *                               duty = 128 + angle * 127 / 180
- *                               0°→duty=128(1ms) / 90°→191(1.5ms) / 180°→255(2ms)
+ *   Pwm_servo_begin()         — TIM1/TIM2 両方をサーボ用 500Hz に設定
+ *   Pwm_servo_begin_TIM1()   — TIM1 のみ 500Hz に設定
+ *   Pwm_servo_begin_TIM2()   — TIM2 のみ 500Hz に設定
+ *   Pwm_servo(pin, angle)    — サーボ角度指定（0–180°）
+ *                              duty = 128 + angle * 127 / 180
+ *                              0°→duty=128(1ms) / 90°→191(1.5ms) / 180°→255(2ms)
  *
  * Note: Do NOT use together with analogWrite() on the same timer/pin.
  *       TIM2 Remap3 は PWMmin_write() 初回呼び出し時に AFIO を設定する。
@@ -279,6 +282,10 @@ static void Pwm_tone(uint8_t pin, uint32_t hz, uint32_t ms)
 }
 
 /* ── Pwm_servo ──────────────────────────────────────────────────────────── */
+
+static inline void Pwm_servo_begin_TIM1(void) { Pwm_freq_TIM1(500); }
+static inline void Pwm_servo_begin_TIM2(void) { Pwm_freq_TIM2(500); }
+static inline void Pwm_servo_begin(void)       { Pwm_freq(500); }
 
 static inline void Pwm_servo(uint8_t pin, uint8_t angle)
 {

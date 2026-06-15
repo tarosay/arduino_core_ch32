@@ -26,6 +26,7 @@
  *   Pwm_freq_TIM2(hz)         — TIM2 のみ周波数変更
  *   Pwm_stop(pin)             — PWM 停止、GPIO を入力フロートに復元
  *   Pwm_tone(pin, hz, ms)     — tone() 相当、ms 後に自動停止（ノンブロッキング）
+ *                               TIM1・TIM2 独立管理のため2音同時に使用可能
  *   Pwm_tone_update()         — loop() 内で毎回呼ぶ（停止タイミング処理）
  *
  * Note: Do NOT use together with analogWrite() on the same timer/pin.
@@ -249,21 +250,40 @@ static void Pwm_stop(uint8_t pin)
 
 /* ── Pwm_tone / Pwm_tone_update ─────────────────────────────────────────── */
 
-static uint32_t _pm_tone_end = 0;
-static uint8_t  _pm_tone_pin = 255;
+static uint32_t _pm_tone1_end = 0;  /* TIM1 用 */
+static uint8_t  _pm_tone1_pin = 255;
+static uint32_t _pm_tone2_end = 0;  /* TIM2 用 */
+static uint8_t  _pm_tone2_pin = 255;
+
+static inline bool _pm_is_tim1(uint8_t pin)
+{
+  return pin == 0 || pin == 5 || pin == 6 || pin == 12;
+}
 
 static void Pwm_tone(uint8_t pin, uint32_t hz, uint32_t ms)
 {
-  Pwm_freq(hz);
-  Pwm_write(pin, 128);
-  _pm_tone_pin = pin;
-  _pm_tone_end = millis() + ms;
+  if (_pm_is_tim1(pin)) {
+    Pwm_freq_TIM1(hz);
+    Pwm_write(pin, 128);
+    _pm_tone1_pin = pin;
+    _pm_tone1_end = millis() + ms;
+  } else {
+    Pwm_freq_TIM2(hz);
+    Pwm_write(pin, 128);
+    _pm_tone2_pin = pin;
+    _pm_tone2_end = millis() + ms;
+  }
 }
 
 static inline void Pwm_tone_update(void)
 {
-  if (_pm_tone_pin != 255 && millis() >= _pm_tone_end) {
-    Pwm_stop(_pm_tone_pin);
-    _pm_tone_pin = 255;
+  uint32_t now = millis();
+  if (_pm_tone1_pin != 255 && now >= _pm_tone1_end) {
+    Pwm_stop(_pm_tone1_pin);
+    _pm_tone1_pin = 255;
+  }
+  if (_pm_tone2_pin != 255 && now >= _pm_tone2_end) {
+    Pwm_stop(_pm_tone2_pin);
+    _pm_tone2_pin = 255;
   }
 }

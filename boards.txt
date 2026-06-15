@@ -8,6 +8,7 @@ menu.opt=Optimize
 menu.dbg=Debug symbols and core logs
 menu.rtlib=C Runtime Library
 menu.upload_method=Upload method
+menu.pwm=PWM
 
 
 ##############################################################################
@@ -70,6 +71,13 @@ CH32V003.menu.usb.terminal=Terminal HID
 CH32V003.menu.usb.terminal.build.flags.usb=-DUIAP_USB_TERMINAL
 CH32V003.menu.usb.nousb=No USB (SD log / UART only)
 CH32V003.menu.usb.nousb.build.flags.usb=-DUIAP_NO_USB
+
+# PWM (PWMmin library TIM2 mapping)
+# TIM1 pins (0/5/6/12) are always available regardless of this setting.
+CH32V003.menu.pwm.default=TIM2 Default (pin 2 / PC0)
+CH32V003.menu.pwm.default.build.flags.pwm=
+CH32V003.menu.pwm.remap3=TIM2 Remap3 (pins 9/15/16)
+CH32V003.menu.pwm.remap3.build.flags.pwm=-DPWMMIN_TIM2_REMAP3
 
 # U(S)ART / HardwareSerial
 # Note: HardwareSerial uses USART1 (TX=PD5, RX=PD6).

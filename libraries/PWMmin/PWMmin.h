@@ -45,6 +45,17 @@
   #define PWMMIN_PSC_DEFAULT ((uint16_t)(PWMMIN_FCPU_HZ / 256000UL - 1UL))
 #endif
 
+/* ── 設定チェックマクロ（スケッチの先頭で呼ぶ）────────────────────────── */
+#ifdef PWMMIN_TIM2_REMAP3
+  #define PWMMIN_REQUIRE_DEFAULT() \
+    static_assert(0, "Tools > PWM を 'TIM2 Default (pin 2 / PC0)' に設定してください")
+  #define PWMMIN_REQUIRE_REMAP3()  /* ok */
+#else
+  #define PWMMIN_REQUIRE_DEFAULT() /* ok */
+  #define PWMMIN_REQUIRE_REMAP3()  \
+    static_assert(0, "Tools > PWM を 'TIM2 Remap3 (pins 9/15/16)' に設定してください")
+#endif
+
 static uint16_t _pm_psc1 = PWMMIN_PSC_DEFAULT;
 static uint16_t _pm_psc2 = PWMMIN_PSC_DEFAULT;
 

@@ -13,10 +13,8 @@
  * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=default,opt=oslto
  */
 
-#ifdef PWMMIN_TIM2_REMAP3
-  #error "Tools > PWM を 'TIM2 Default (pin 2 / PC0)' に設定してください"
-#endif
 #include <PWMmin.h>
+PWMMIN_REQUIRE_DEFAULT();
 
 static const uint8_t pins[] = {0, 5, 6, 12, 2};
 static const uint8_t N = sizeof(pins);

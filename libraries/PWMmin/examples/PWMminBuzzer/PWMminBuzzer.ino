@@ -16,10 +16,8 @@
  * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=default,opt=oslto
  */
 
-#ifdef PWMMIN_TIM2_REMAP3
-  #error "Tools > PWM を 'TIM2 Default (pin 2 / PC0)' に設定してください"
-#endif
 #include <PWMmin.h>
+PWMMIN_REQUIRE_DEFAULT();
 
 #define PIN_TIM1  5   /* PC3  TIM1-CH3 */
 #define PIN_TIM2  2   /* PC0  TIM2-CH3 */

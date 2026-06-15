@@ -476,6 +476,63 @@ Wiremin_write_reg(0x3C, 0x40, buf, 128);
 
 ---
 
+## PWMmin ライブラリ
+
+CH32V003 専用の軽量 PWM ライブラリです。`analogWrite()` の代わりに TIM1・TIM2 を直接制御し、Flash 使用量を最小化します。ヘッダーオンリーで、未使用の関数は LTO によりビルド時に自動削除されます。
+
+### Tools > PWM 設定
+
+| 設定 | TIM2 使用ピン |
+|------|--------------|
+| **TIM2 Default**（デフォルト） | pin 2 (PC0 / TIM2-CH3) |
+| **TIM2 Remap3** | pin 3 (PC1), 9 (PC7), 15 (PD5), 16 (PD6) |
+
+TIM1 ピン（pin 0 / 5 / 6 / 12）はどちらの設定でも使用できます。
+
+### API
+
+```cpp
+#include <PWMmin.h>
+PWMMIN_REQUIRE_DEFAULT();  // または PWMMIN_REQUIRE_REMAP3()
+```
+
+| 関数 | 説明 |
+|------|------|
+| `Pwm_write(pin, duty)` | PWM 出力（duty: 0=0%, 128=50%, 255=100%） |
+| `Pwm_freq(hz)` | TIM1・TIM2 両方の周波数を設定（デフォルト 1000Hz） |
+| `Pwm_freq_TIM1(hz)` | TIM1 のみ周波数設定 |
+| `Pwm_freq_TIM2(hz)` | TIM2 のみ周波数設定 |
+| `Pwm_stop(pin)` | PWM 停止・ピンを入力フロートに復元 |
+| `Pwm_tone(pin, hz, ms)` | ノンブロッキング tone（ms 経過後に自動停止） |
+| `Pwm_tone_update()` | Pwm_tone の停止処理を実行（loop() で定期呼び出し） |
+| `Pwm_servo_begin()` | TIM1・TIM2 を 500Hz（サーボ用）に設定 |
+| `Pwm_servo_begin_TIM1()` | TIM1 のみ 500Hz に設定 |
+| `Pwm_servo_begin_TIM2()` | TIM2 のみ 500Hz に設定 |
+| `Pwm_servo(pin, angle)` | サーボ角度制御（0〜180°） |
+
+### サンプルスケッチ
+
+`ファイル` → `スケッチ例` → `PWMmin` から開けます。
+
+| スケッチ | 設定 | 内容 |
+|----------|------|------|
+| PWMminBasic | TIM2 Default | 基本 API・5ピン（pin 0/2/5/6/12）確認 |
+| PWMminRemap3 | TIM2 Remap3 | 基本 API・7ピン（pin 0/5/6/9/12/15/16）確認 |
+| PWMminTone | TIM2 Default | ブザー2個で全 API 確認（ドレミ・和音・交互・音量スイープ） |
+| PWMminServo | TIM2 Default | サーボ2軸制御（1軸・2軸逆方向） |
+| PWMminServoRemap3 | TIM2 Remap3 | サーボ2軸制御（Remap3 ピン使用） |
+
+### 誤設定の検出
+
+スケッチの先頭に記述することで、Tools > PWM の設定が合っていない場合にコンパイルエラーを出します。
+
+```cpp
+PWMMIN_REQUIRE_DEFAULT();  // TIM2 Default 必須のスケッチ
+PWMMIN_REQUIRE_REMAP3();   // TIM2 Remap3 必須のスケッチ
+```
+
+---
+
 ## SDmin ライブラリ
 
 Flash サイズ節約に特化した最小限の FAT32 SD ライブラリです。  
@@ -641,7 +698,18 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.5（最新）
+### v1.2.6（最新）
+
+- **PWMmin ライブラリ追加** — CH32V003 専用の軽量 PWM ライブラリ（ヘッダーオンリー）
+  - TIM1・TIM2 独立周波数制御（`Pwm_freq_TIM1` / `Pwm_freq_TIM2`）
+  - ノンブロッキング tone 相当（`Pwm_tone` / `Pwm_tone_update`）
+  - サーボ制御 API（`Pwm_servo_begin` / `Pwm_servo`）。500Hz・duty 128〜255 で 0°〜180°
+  - 誤設定コンパイルエラーマクロ（`PWMMIN_REQUIRE_DEFAULT` / `PWMMIN_REQUIRE_REMAP3`）
+  - サンプルスケッチ 5 つ（Basic / Remap3 / Tone / Servo / ServoRemap3）
+- **Tools > PWM メニュー追加** — TIM2 Default（pin 2）/ TIM2 Remap3（pin 9/15/16）を切り替え
+- **USB VID/PID 注記追加** — `usb_config.h` コメントと README に「開発・評価用」と明記。製造・配布・販売時は正規 VID/PID を設定するよう案内
+
+### v1.2.5
 
 - **SDmin: `sm_seek(pos)` 追加** — 読み取りオープン中のファイルの読み位置を任意位置へ移動（ランダムアクセス読み）。TinyVM のジャンプ処理などで「開き直して先頭から読み飛ばす」必要がなくなる
 - **SDmin: `sm_write_at(path, pos, buf, len)` 追加** — 既存ファイルの途中だけを部分上書き（セクタ単位の読み・修正・書き戻し）。ファイル作り直しが不要になり、高速かつ FAT・ディレクトリを書き換えないため SD カードの摩耗が少ない。1 セクタ内限定・サイズ拡張なし

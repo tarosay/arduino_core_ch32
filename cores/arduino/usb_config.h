@@ -38,8 +38,8 @@ static const uint8_t device_descriptor[] = {
 	0x10, 0x01,
 	0x0, 0x0, 0x0,
 	0x08,
-	0x09, 0x12,    // ID Vendor
-	0x04, 0xd0,    // ID Product 0xd004 = UIAPduino WebHID
+	0x09, 0x12,    // VID 0x1209 (pid.codes open-source VID, development/testing only)
+	0x04, 0xd0,    // PID 0xD004 (UIAPduino WebHID example — replace with your own PID for products)
 	0x01, 0x00,
 	1, 2, 3, 1,
 };
@@ -165,8 +165,8 @@ static const uint8_t device_descriptor[] = {
 	0x0, //Device Subclass
 	0x0, //Device Protocol  (000 = use config descriptor)
 	0x08, //Max packet size for EP0
-	0x09, 0x12, //ID Vendor
-	0x04, 0xd0, //ID Product (0xd004 = UIAPduino KBD+Mouse)
+	0x09, 0x12, // VID 0x1209 (pid.codes open-source VID, development/testing only)
+	0x04, 0xd0, // PID 0xD004 (UIAPduino KBD+Mouse example — replace with your own PID for products)
 	0x01, 0x00, //ID Rev
 	1, //Manufacturer string
 	2, //Product string

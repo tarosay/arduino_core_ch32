@@ -712,6 +712,21 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ---
 
+## USB VID/PID について
+
+本 core に含まれる VID/PID は**開発・評価用**です。
+
+```
+VID: 0x1209  (pid.codes — オープンソース向け共有 VID)
+PID: 0xD004  (UIAPduino 向けサンプル値)
+```
+
+この core を使用して USB デバイスを**製造・配布・販売**する場合は、
+利用者または製造者の責任で正規に利用可能な VID/PID を設定してください。
+`cores/arduino/usb_config.h` の該当行を変更してください。
+
+---
+
 ## ライセンス
 
 fork 元: [openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32)  

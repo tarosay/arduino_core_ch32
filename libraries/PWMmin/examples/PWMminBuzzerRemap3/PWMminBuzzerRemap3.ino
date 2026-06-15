@@ -17,6 +17,9 @@
  * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,pwm=remap3,xserial=none,opt=oslto
  */
 
+#ifndef PWMMIN_TIM2_REMAP3
+  #error "Tools > PWM を 'TIM2 Remap3 (pins 9/15/16)' に設定してください"
+#endif
 #include <PWMmin.h>
 
 static void beep(uint8_t pin, uint8_t n) {

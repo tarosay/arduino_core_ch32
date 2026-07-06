@@ -698,7 +698,20 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.6（最新）
+### v1.2.7（最新）
+
+- **フォーク元（YuukiUmeta-UIAP/arduino_core_ch32）の main をマージ** — openwch 本家の以下の修正を取り込み
+  - **Print: `print(0)` が `"0"` を出力するように修正**（本家 #189）  
+    従来は 0 を print すると空文字になっていた（ArduinoCore-API #178 と同件）
+  - **platform.txt: Arduino IDE 1.8.x 互換の修正**  
+    minichlink の Windows パス区切りを `\` → `/` に修正、`upload.params.verbose` / `upload.params.quiet` を追加
+  - **PeripheralPins.c（CH32V003F4）: ADC1_IN6 / ADC1_IN7 のピン割り当てを修正**（本家 #160）  
+    誤って PA6 / PA4 になっていたものを PD6 / PD4 に修正（analogRead の A6 / A7 が正しいピンで動作する）
+  - **tools/platformio-build.py 更新**（本家 #147、Arduino IDE でのビルドには影響なし）
+- **マージ後の全ビルド確認済み** — メンテ対象の全スケッチ例 40 本がビルド成功（16KB Flash 内）。退行なし  
+  ※ SPI/SPIFlash は openwch 本家由来の残置サンプルで、`Serial.printf`（`vdprintf`）が ch32fun ランタイムに無いため従来からビルド不可（メンテ対象外）
+
+### v1.2.6
 
 - **PWMmin ライブラリ追加** — CH32V003 専用の軽量 PWM ライブラリ（ヘッダーオンリー）
   - TIM1・TIM2 独立周波数制御（`Pwm_freq_TIM1` / `Pwm_freq_TIM2`）

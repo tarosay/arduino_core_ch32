@@ -176,11 +176,13 @@ tools.WCH_linkE.upload.pattern="{path}{cmd}" -f "{upload.config}" -c init -c hal
 
 ## minichlink
 tools.minichlink.path={runtime.tools.minichlink-2982dfd-1.0.0.path}/
-tools.minichlink.path.windows={runtime.tools.minichlink-2982dfd-1.0.0.path}\
+tools.minichlink.path.windows={runtime.tools.minichlink-2982dfd-1.0.0.path}/
 tools.minichlink.cmd=minichlink
 tools.minichlink.cmd.windows=minichlink.exe
 tools.minichlink.upload.pattern="{path}{cmd}" -w "{build.path}/{build.project_name}.bin" flash
 tools.minichlink.upload.pattern.windows="{path}{cmd}" -w "{build.path}\{build.project_name}.bin" flash
+tools.minichlink.upload.params.verbose=
+tools.minichlink.upload.params.quiet=
 tools.minichlink.program.pattern=
 tools.minichlink.erase.pattern=
 tools.minichlink.bootloader.pattern=

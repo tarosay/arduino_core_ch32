@@ -51,7 +51,7 @@ Arduino IDE で UIAPduino を使うための Arduino コアです。
 Arduino IDE の「環境設定」→「追加のボードマネージャのURL」に以下を追加します:
 
 ```
-https://github.com/tarosay/board_manager_files/raw/main/package_ch32v_index.json
+https://github.com/tarosay/board_manager_files/raw/main/package_uiap_hid_index.json
 ```
 
 「ボードマネージャ」で `UIAPduino` を検索してインストールしてください。  

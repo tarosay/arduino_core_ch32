@@ -698,7 +698,16 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.7（最新）
+### v1.2.8（最新）
+
+- **Zicsr 拡張の明示指定に対応** — `noInterrupts()` / `interrupts()` を使うライブラリでビルドが通らない問題を修正
+  - 現行の RISC-V 仕様では `csrr` / `csrw` などの CSR 命令が `Zicsr` 拡張に分離されており、GCC 11 以降は `-march=rv32ec` のままだとアセンブラが認識できず `Error: unrecognized opcode 'csrr ...', extension 'zicsr' required` になっていた
+  - 各 CSR 命令の直前に `.option arch, +zicsr` を挿入するマクロ（`ADD_ARCH_ZICSR`）を追加。`cores/arduino/ch32fun.h` で既に使われていた手法に合わせた
+  - **`-march` は変更していない**ため、既存の割り込み設定・ABI・コード生成には影響なし
+  - 対象は全 7 MCU シリーズ（CH32V00x / V10x / V20x / V30x / L10x / VM00X / X035）の `core_riscv.h` / `core_riscv.c` / `*_dbgmcu.c` 計 19 ファイル
+  - Adafruit NeoPixel の `show()` が `noInterrupts()` を呼ぶため、LTO 展開時に初めて表面化していた。CH32V003 + Adafruit NeoPixel 1.15.5 で動作確認済み（Flash 8,168 バイト / 49%）
+
+### v1.2.7
 
 - **フォーク元（YuukiUmeta-UIAP/arduino_core_ch32）の main をマージ** — openwch 本家の以下の修正を取り込み
   - **Print: `print(0)` が `"0"` を出力するように修正**（本家 #189）  

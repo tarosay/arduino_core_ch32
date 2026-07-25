@@ -10,6 +10,13 @@
 #ifndef __CORE_RISCV_H__
 #define __CORE_RISCV_H__
 
+/* GCC>10 requires explicit Zicsr for csrr/csrw/csrs/csrc (RISC-V ISA spec split it out of the base ISA) */
+#if defined(__GNUC__) && (__GNUC__ > 10)
+  #define ADD_ARCH_ZICSR ".option arch, +zicsr\n"
+#else
+  #define ADD_ARCH_ZICSR
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -127,7 +134,7 @@ typedef struct
  */
 RV_STATIC_INLINE void __enable_irq()
 {
-  __asm volatile ("csrw 0x800, %0" : : "r" (0x6088) );
+  __asm volatile (ADD_ARCH_ZICSR "csrw 0x800, %0" : : "r" (0x6088) );
 }
 
 /*********************************************************************
@@ -139,7 +146,7 @@ RV_STATIC_INLINE void __enable_irq()
  */
 RV_STATIC_INLINE void __disable_irq()
 {
-  __asm volatile ("csrw 0x800, %0" : : "r" (0x6000) );
+  __asm volatile (ADD_ARCH_ZICSR "csrw 0x800, %0" : : "r" (0x6000) );
 }
 
 /*********************************************************************

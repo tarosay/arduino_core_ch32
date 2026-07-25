@@ -11,6 +11,13 @@
 *******************************************************************************/
 #include <stdint.h>
 
+/* GCC>10 requires explicit Zicsr for csrr/csrw (RISC-V ISA spec split it out of the base ISA) */
+#if defined(__GNUC__) && (__GNUC__ > 10)
+  #define ADD_ARCH_ZICSR ".option arch, +zicsr\n"
+#else
+  #define ADD_ARCH_ZICSR
+#endif
+
 /* define compiler specific symbols */
 #if defined ( __CC_ARM   )
   #define __ASM            __asm                                      /*!< asm keyword for ARM Compiler          */
@@ -42,7 +49,7 @@ uint32_t __get_FFLAGS(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "fflags" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "fflags" : "=r" (result) );
   return (result);
 }
 
@@ -57,7 +64,7 @@ uint32_t __get_FFLAGS(void)
  */
 void __set_FFLAGS(uint32_t value)
 {
-  __ASM volatile ("csrw fflags, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw fflags, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -71,7 +78,7 @@ uint32_t __get_FRM(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "frm" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "frm" : "=r" (result) );
   return (result);
 }
 
@@ -86,7 +93,7 @@ uint32_t __get_FRM(void)
  */
 void __set_FRM(uint32_t value)
 {
-  __ASM volatile ("csrw frm, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw frm, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -100,7 +107,7 @@ uint32_t __get_FCSR(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "fcsr" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "fcsr" : "=r" (result) );
   return (result);
 }
 
@@ -115,7 +122,7 @@ uint32_t __get_FCSR(void)
  */
 void __set_FCSR(uint32_t value)
 {
-  __ASM volatile ("csrw fcsr, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw fcsr, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -129,7 +136,7 @@ uint32_t __get_MSTATUS(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mstatus" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mstatus" : "=r" (result) );
   return (result);
 }
 
@@ -144,7 +151,7 @@ uint32_t __get_MSTATUS(void)
  */
 void __set_MSTATUS(uint32_t value)
 {
-  __ASM volatile ("csrw mstatus, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mstatus, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -158,7 +165,7 @@ uint32_t __get_MISA(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "misa" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "misa" : "=r" (result) );
   return (result);
 }
 
@@ -173,7 +180,7 @@ uint32_t __get_MISA(void)
  */
 void __set_MISA(uint32_t value)
 {
-  __ASM volatile ("csrw misa, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw misa, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -187,7 +194,7 @@ uint32_t __get_MTVEC(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mtvec" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mtvec" : "=r" (result) );
   return (result);
 }
 
@@ -202,7 +209,7 @@ uint32_t __get_MTVEC(void)
  */
 void __set_MTVEC(uint32_t value)
 {
-  __ASM volatile ("csrw mtvec, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mtvec, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -216,7 +223,7 @@ uint32_t __get_MSCRATCH(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mscratch" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mscratch" : "=r" (result) );
   return (result);
 }
 
@@ -231,7 +238,7 @@ uint32_t __get_MSCRATCH(void)
  */
 void __set_MSCRATCH(uint32_t value)
 {
-  __ASM volatile ("csrw mscratch, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mscratch, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -245,7 +252,7 @@ uint32_t __get_MEPC(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mepc" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mepc" : "=r" (result) );
   return (result);
 }
 
@@ -258,7 +265,7 @@ uint32_t __get_MEPC(void)
  */
 void __set_MEPC(uint32_t value)
 {
-  __ASM volatile ("csrw mepc, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mepc, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -272,7 +279,7 @@ uint32_t __get_MCAUSE(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mcause" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mcause" : "=r" (result) );
   return (result);
 }
 
@@ -285,7 +292,7 @@ uint32_t __get_MCAUSE(void)
  */
 void __set_MCAUSE(uint32_t value)
 {
-  __ASM volatile ("csrw mcause, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mcause, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -299,7 +306,7 @@ uint32_t __get_MTVAL(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mtval" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mtval" : "=r" (result) );
   return (result);
 }
 
@@ -312,7 +319,7 @@ uint32_t __get_MTVAL(void)
  */
 void __set_MTVAL(uint32_t value)
 {
-  __ASM volatile ("csrw mtval, %0" : : "r" (value) );
+  __ASM volatile (ADD_ARCH_ZICSR "csrw mtval, %0" : : "r" (value) );
 }
 
 /*********************************************************************
@@ -326,7 +333,7 @@ uint32_t __get_MVENDORID(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mvendorid" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mvendorid" : "=r" (result) );
   return (result);
 }
 
@@ -341,7 +348,7 @@ uint32_t __get_MARCHID(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "marchid" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "marchid" : "=r" (result) );
   return (result);
 }
 
@@ -356,7 +363,7 @@ uint32_t __get_MIMPID(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mimpid" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mimpid" : "=r" (result) );
   return (result);
 }
 
@@ -371,7 +378,7 @@ uint32_t __get_MHARTID(void)
 {
   uint32_t result;
 
-  __ASM volatile ( "csrr %0," "mhartid" : "=r" (result) );
+  __ASM volatile ( ADD_ARCH_ZICSR "csrr %0," "mhartid" : "=r" (result) );
   return (result);
 }
 

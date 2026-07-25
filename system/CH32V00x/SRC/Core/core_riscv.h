@@ -113,6 +113,13 @@ typedef struct
 
 #define SysTick         ((SysTick_Type *) 0xE000F000)
 
+/* GCC>10 requires explicit Zicsr for csrr/csrw (RISC-V ISA spec split it out of the base ISA) */
+#if defined(__GNUC__) && (__GNUC__ > 10)
+  #define ADD_ARCH_ZICSR ".option arch, +zicsr\n"
+#else
+  #define ADD_ARCH_ZICSR
+#endif
+
 
 /*********************************************************************
  * @fn      __enable_irq
@@ -125,9 +132,9 @@ RV_STATIC_INLINE void __enable_irq()
 {
   uint32_t result;
 
-  __asm volatile("csrr %0," "mstatus": "=r"(result));
+  __asm volatile(ADD_ARCH_ZICSR "csrr %0," "mstatus": "=r"(result));
   result |= 0x88;
-  __asm volatile ("csrw mstatus, %0" : : "r" (result) );
+  __asm volatile (ADD_ARCH_ZICSR "csrw mstatus, %0" : : "r" (result) );
 }
 
 /*********************************************************************
@@ -141,9 +148,9 @@ RV_STATIC_INLINE void __disable_irq()
 {
   uint32_t result;
 
-  __asm volatile("csrr %0," "mstatus": "=r"(result));
+  __asm volatile(ADD_ARCH_ZICSR "csrr %0," "mstatus": "=r"(result));
   result &= ~0x88;
-  __asm volatile ("csrw mstatus, %0" : : "r" (result) );
+  __asm volatile (ADD_ARCH_ZICSR "csrw mstatus, %0" : : "r" (result) );
 }
 
 /*********************************************************************

@@ -11,6 +11,13 @@
 *******************************************************************************/
 #include "ch32x035_dbgmcu.h"
 
+/* GCC>10 requires explicit Zicsr for csrr/csrw (RISC-V ISA spec split it out of the base ISA) */
+#if defined(__GNUC__) && (__GNUC__ > 10)
+  #define ADD_ARCH_ZICSR ".option arch, +zicsr\n"
+#else
+  #define ADD_ARCH_ZICSR
+#endif
+
 #define IDCODE_DEVID_MASK    ((uint32_t)0x0000FFFF)
 
 /*********************************************************************
@@ -48,7 +55,7 @@ uint32_t __get_DEBUG_CR(void)
 {
 	uint32_t result;
 
-	__asm volatile("csrr %0,""0x7C0" : "=r"(result));
+	__asm volatile(ADD_ARCH_ZICSR "csrr %0,""0x7C0" : "=r"(result));
 	return (result);
 }
 
@@ -63,7 +70,7 @@ uint32_t __get_DEBUG_CR(void)
  */
 void __set_DEBUG_CR(uint32_t value)
 {
-	__asm volatile("csrw 0x7C0, %0" : : "r"(value));
+	__asm volatile(ADD_ARCH_ZICSR "csrw 0x7C0, %0" : : "r"(value));
 }
 
 

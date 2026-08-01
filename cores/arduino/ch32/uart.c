@@ -293,6 +293,8 @@ void uart_init(serial_t *obj, uint32_t baudrate, uint32_t databits, uint32_t par
   */
 void uart_deinit(serial_t *obj)
 {
+  uart_detach_rx_callback(obj);
+
   /* Reset UART and disable clock */
   switch (obj->index) 
   {
@@ -527,6 +529,142 @@ int uart_getc(serial_t *obj, unsigned char *c)
 
   return 0;
 }
+
+/**
+  * @brief  Enable the RXNE interrupt and register the reception callback
+  * @param  obj : pointer to serial_t structure
+  * @param  callback : function called from the ISR once a byte is received
+  * @retval None
+  */
+void uart_attach_rx_callback(serial_t *obj, void (*callback)(serial_t *))
+{
+  if ((obj == NULL) || (callback == NULL) || (obj->index >= UART_NUM)) {
+    return;
+  }
+  /* Half-duplex or Tx only: there is nothing to receive */
+  if (obj->pin_rx == NC) {
+    return;
+  }
+
+  obj->rx_callback = callback;
+
+  /* Drop whatever was received before the interrupt is enabled, this also
+     clears a pending RXNE/ORE so the ISR is not entered with a stale byte */
+  (void)USART_ReceiveData(obj->handle.Instance);
+
+  NVIC_SetPriority(obj->irq, UART_IRQ_PRIO);
+  NVIC_EnableIRQ(obj->irq);
+  USART_ITConfig(obj->handle.Instance, USART_IT_RXNE, ENABLE);
+}
+
+/**
+  * @brief  Disable the RXNE interrupt
+  * @param  obj : pointer to serial_t structure
+  * @retval None
+  */
+void uart_detach_rx_callback(serial_t *obj)
+{
+  if ((obj == NULL) || (obj->index >= UART_NUM)) {
+    return;
+  }
+
+  USART_ITConfig(obj->handle.Instance, USART_IT_RXNE, DISABLE);
+  NVIC_DisableIRQ(obj->irq);
+  obj->rx_callback = NULL;
+}
+
+/**
+  * @brief  Common RXNE interrupt handler
+  * @param  index : uart instance the interrupt comes from
+  * @retval None
+  */
+static void uart_rx_irq(uart_index_t index)
+{
+  UART_HandleTypeDef *huart = uart_handlers[index];
+
+  if (huart == NULL) {
+    return;
+  }
+
+  /* RXNE and ORE are both cleared by reading STATR then DATAR, so the byte is
+     still delivered when an overrun happened while interrupts were masked */
+  if ((USART_GetFlagStatus(huart->Instance, USART_FLAG_RXNE) != RESET)
+      || (USART_GetFlagStatus(huart->Instance, USART_FLAG_ORE) != RESET)) {
+    uint8_t data = (uint8_t)(USART_ReceiveData(huart->Instance) & 0xFF);
+    serial_t *obj = get_serial_obj(huart);
+
+    if ((obj != NULL) && (obj->rx_callback != NULL)) {
+      obj->recv = data;
+      obj->rx_callback(obj);
+    }
+  }
+}
+
+/* The handlers are only built when a HardwareSerial instance can exist, so a
+   sketch driving a U(S)ART on its own (without SERIAL_UART_INSTANCE) keeps
+   full control of the vector. They must be strong definitions: the startup
+   code already provides weak stubs that spin forever, and between two weak
+   definitions the linker keeps the startup one.
+
+   Plain interrupt attribute (machine mode) on purpose: some RISC-V toolchains
+   used to build this core reject the WCH specific
+   interrupt("WCH-Interrupt-fast") argument and then drop the attribute
+   altogether, which leaves the handler returning with ret instead of mret.
+   The interrupt is then delivered exactly once and never again. */
+#if defined(SERIAL_UART_INSTANCE)
+
+#define UART_IRQ_HANDLER __attribute__((interrupt)) void
+
+#if defined(USART1_BASE)
+UART_IRQ_HANDLER USART1_IRQHandler(void)
+{
+  uart_rx_irq(UART1_INDEX);
+}
+#endif
+#if defined(USART2_BASE)
+UART_IRQ_HANDLER USART2_IRQHandler(void)
+{
+  uart_rx_irq(UART2_INDEX);
+}
+#endif
+#if defined(USART3_BASE)
+UART_IRQ_HANDLER USART3_IRQHandler(void)
+{
+  uart_rx_irq(UART3_INDEX);
+}
+#endif
+#if defined(UART4_BASE)
+UART_IRQ_HANDLER UART4_IRQHandler(void)
+{
+  uart_rx_irq(UART4_INDEX);
+}
+#endif
+#if defined(UART5_BASE)
+UART_IRQ_HANDLER UART5_IRQHandler(void)
+{
+  uart_rx_irq(UART5_INDEX);
+}
+#endif
+#if defined(UART6_BASE)
+UART_IRQ_HANDLER UART6_IRQHandler(void)
+{
+  uart_rx_irq(UART6_INDEX);
+}
+#endif
+#if defined(UART7_BASE)
+UART_IRQ_HANDLER UART7_IRQHandler(void)
+{
+  uart_rx_irq(UART7_INDEX);
+}
+#endif
+#if defined(UART8_BASE)
+UART_IRQ_HANDLER UART8_IRQHandler(void)
+{
+  uart_rx_irq(UART8_INDEX);
+}
+#endif
+
+#endif /* SERIAL_UART_INSTANCE */
 
 
 

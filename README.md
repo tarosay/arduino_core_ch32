@@ -480,6 +480,35 @@ Wiremin_write_reg(0x3C, 0x40, buf, 128);
 
 CH32V003 専用の軽量 PWM ライブラリです。`analogWrite()` の代わりに TIM1・TIM2 を直接制御し、Flash 使用量を最小化します。ヘッダーオンリーで、未使用の関数は LTO によりビルド時に自動削除されます。
 
+### CH32V003 では `analogWrite()` を使わないでください
+
+`analogWrite()` は `HardwareTimer` を丸ごと引き込むため、16KB Flash の CH32V003 には重すぎます。スケッチ例 `PwmAndToneTest` を `analogWrite()` から `Pwm_write()` に置き換えた実測値です。
+
+| | Flash | グローバル変数 |
+|------|-------|--------------|
+| `analogWrite()` | 8,728 B (53%) | 696 B (33%) |
+| `Pwm_write()` | 6,496 B (39%) | 380 B (18%) |
+| 差 | **−2,232 B** | **−316 B** |
+
+さらに以下の制限があります。
+
+| 症状 | 原因 |
+|------|------|
+| TIM1 と TIM2 の両方に `analogWrite()` すると無言でフリーズする | `HardwareTimer` 1 個が 144 バイト消費するのに対し、`operator new` のプールが 256 バイトしかない。2 個目の確保に失敗し、`operator new` が無限ループに入る |
+| `analogWrite()` → `pinMode()` → `analogWrite()` と往復するたびに RAM が減る | `pinMode()` が `pwm_stop()` → `delete` を呼ぶが `operator delete` は領域を回収しない。次の `analogWrite()` がさらに 136 バイト消費する |
+| 同じタイマーのピンで `analogWrite()` と `tone()` を併用すると PWM が崩れる | `tone()` は鳴らす周波数に合わせてタイマーの PSC / ATRLR を書き換えるため |
+
+PWMmin は動的確保を一切しないため、いずれの問題も起きません。
+
+| 用途 | 使う関数 |
+|------|---------|
+| PWM 出力 | `Pwm_write(pin, duty)` |
+| 周波数変更 | `Pwm_freq()` / `Pwm_freq_TIM1()` / `Pwm_freq_TIM2()` |
+| PWM 停止 | `Pwm_stop(pin)` |
+| ブザー | `Pwm_tone()`、または Tone ライブラリの `tone()` / `noTone()` |
+
+`tone()` は `HardwareTimer` を使わないので上記の問題はありません。ただし PWM とは**別のタイマーのピン**を選んでください（TIM1 = pin 0/5/6/12、TIM2 = pin 2 または 3/9/15/16）。
+
 ### Tools > PWM 設定
 
 | 設定 | TIM2 使用ピン |
@@ -698,7 +727,24 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.8（最新）
+### v1.2.9（最新）
+
+- **HardwareSerial に USART 受信割り込みとリングバッファを追加** — `Serial.available()` / `read()` / `peek()` が使えるようになった（既定 64 バイト、`SERIAL_RX_BUFFER_SIZE` で変更可）
+- **`realloc()` が内容を保持しない問題を修正**（`cores/arduino/ch32_heap.c`）
+  - 新しいブロックを返すだけで旧データをコピーしていなかった。`String` の連結（`s += ...`）でバッファが伸びるたびに先頭がゴミになり、`Serial.println(s)` が壊れた文字列を出力していた
+  - `free()` が領域を回収するようになった（LIFO 順で巻き戻し）。`loop()` 内で `String` を使ってもヒープが枯渇しない
+  - 最新ブロックの `realloc()` はコピーせずその場で拡張する
+  - `calloc()` の乗算オーバーフロー、確保上限判定のポインタ演算オーバーフロー（未定義動作）、不正ポインタの `free()` も修正
+- **`dtostrf()` の修正**（`cores/arduino/avr/dtostrf.c`）
+  - `strdup()` を呼んでいたが、このコアは `-nostdlib` で `strdup` が存在しない。`String(1.5)` などを書くと `undefined reference to 'strdup'` でリンクに失敗していた（未使用時のみ `--gc-sections` で消えて通っていた）
+  - 小数の先頭ゼロが落ちていた（`dtostrf(1.05, 0, 2)` → `"1.5"`）
+  - 負の値が 0.x に丸まると符号が消えていた（`dtostrf(-0.25, 0, 2)` → `"0.25"`）
+  - 129 バイトのスタックバッファと `sprintf` 依存を削除
+  - **挙動変更**: `prec == 0` のとき小数点を付けなくなった（`"1.0"` → `"1"`。avr-libc に準拠）
+- **`pwm_start()` / `pwm_stop()` の NULL 参照を修正**（`cores/arduino/ch32/analog.cpp`） — `HardwareTimer_Handle[index]` が NULL のときにその先へ代入していた。C++17 未満では代入の評価順が未規定のため、コンパイラ次第で NULL 参照になる
+- **CH32V003 で `analogWrite()` を非推奨に** — 理由と代替を README に明記し、スケッチ例 `PwmAndToneTest` を PWMmin (`Pwm_write`) に書き換え
+
+### v1.2.8
 
 - **Zicsr 拡張の明示指定に対応** — `noInterrupts()` / `interrupts()` を使うライブラリでビルドが通らない問題を修正
   - 現行の RISC-V 仕様では `csrr` / `csrw` などの CSR 命令が `Zicsr` 拡張に分離されており、GCC 11 以降は `-march=rv32ec` のままだとアセンブラが認識できず `Error: unrecognized opcode 'csrr ...', extension 'zicsr' required` になっていた

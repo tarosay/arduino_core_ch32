@@ -762,7 +762,11 @@ void pwm_start(PinName pin, uint32_t PWM_freq, uint32_t value, TimerCompareForma
   TimerModes_t previousMode;
   uint32_t index = get_timer_index(Instance);
   if (HardwareTimer_Handle[index] == NULL) {
-    HardwareTimer_Handle[index]->__this = new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
+    /* The constructor registers itself in HardwareTimer_Handle[index] and
+       sets __this, so there is nothing to assign here. Assigning through
+       HardwareTimer_Handle[index] would dereference a null pointer whenever
+       the compiler evaluates the left operand first, which C++14 allows. */
+    new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
   }
 
   HT = (HardwareTimer *)(HardwareTimer_Handle[index]->__this);
@@ -791,13 +795,12 @@ void pwm_stop(PinName pin)
   HardwareTimer *HT;
   uint32_t index = get_timer_index(Instance);
   if (HardwareTimer_Handle[index] == NULL) {
-    HardwareTimer_Handle[index]->__this = new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
+    return; /* nothing was ever started on this timer */
   }
 
   HT = (HardwareTimer *)(HardwareTimer_Handle[index]->__this);
   if (HT != NULL) {
     delete (HT);
-    HT = NULL;
   }
 }
 #endif /* TIM_MODULE_ENABLED && !TIM_MODULE_ONLY */

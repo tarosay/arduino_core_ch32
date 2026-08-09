@@ -14,9 +14,15 @@
  *   Wiremin_end()                            — de-init I2C1
  *   Wiremin_write(addr7, data, len)          — send bytes to device
  *   Wiremin_read(addr7, buf, len)            — receive bytes from device
- *   Wiremin_write_reg(addr7, reg, data, len) — write starting at register
- *   Wiremin_read_reg(addr7, reg, buf, len)   — read starting at register (repeated START)
+ *   Wiremin_write_reg(addr7, reg, data, len) — write starting at 8-bit register
+ *   Wiremin_read_reg(addr7, reg, buf, len)   — read starting at 8-bit register (repeated START)
+ *   Wiremin_write_reg16(addr7, reg, data, len) — same, 16-bit address (24FC256 etc.)
+ *   Wiremin_read_reg16(addr7, reg, buf, len)   — same, 16-bit address (repeated START)
  *   Wiremin_probe(addr7)                     — true if device ACKs (for scanning)
+ *
+ *   All of the above share one body (_wm_xfer). Device-specific concerns —
+ *   EEPROM page boundaries, write-cycle polling, capacity checks — belong in
+ *   the sketch, not here.
  *
  * ── Slave API ───────────────────────────────────────────────────────────────
  *   Wiremin_slave_begin(addr7)               — init I2C1 as slave at given address
@@ -261,54 +267,48 @@ extern "C" __attribute__((interrupt)) void I2C1_ER_IRQHandler(void) {
   (void)I2C1->STAR2; // clear remaining error flags
 }
 
-// ── Master write ──────────────────────────────────────────────────────────────
-
-static bool Wiremin_write(uint8_t addr7, const uint8_t *data, uint8_t len) {
+// ── Master transfer core ──────────────────────────────────────────────────────
+//
+// Single implementation behind every master transfer. Wrappers below cost a few
+// instructions each; keeping one body avoids duplicating the
+// START/ADDR/TXE/BTF/STOP sequence per entry point.
+//
+//   pre/prelen — address bytes sent before the payload, MSB first (0–4 bytes)
+//   rd = 0     — START → addr+W → pre → buf[0..len-1] → STOP
+//   rd = 1     — START → addr+W → pre → rSTART → addr+R → buf[0..len-1] → STOP
+//                (prelen == 0 skips the write phase → plain read)
+static bool _wm_xfer(uint8_t addr7, uint32_t pre, uint8_t prelen,
+                     uint8_t *buf, uint8_t len, uint8_t rd) {
+  if (rd && !len) return false; // nothing to read; leave the bus untouched
   if (!_wm_wait_idle()) return false;
 
-  I2C1->CTLR1 |= (1u<<8); // START
-  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; } // SB
+  // Write phase: also runs for len == 0 writes (address-only ACK probe).
+  if (prelen || !rd) {
+    I2C1->CTLR1 |= (1u<<8); // START
+    if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; } // SB
+    I2C1->DATAR = addr7 << 1; // write direction
+    if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; } // ADDR
+    (void)I2C1->STAR1; (void)I2C1->STAR2; // clear ADDR
 
-  I2C1->DATAR = addr7 << 1; // write direction
-  if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; } // ADDR
-  (void)I2C1->STAR1; (void)I2C1->STAR2; // clear ADDR
-
-  for (uint8_t i = 0; i < len; i++) {
-    if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; } // TXE
-    I2C1->DATAR = data[i];
+    for (uint8_t i = prelen; i; --i) { // MSB first
+      if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; } // TXE
+      I2C1->DATAR = (uint8_t)(pre >> ((i - 1) * 8));
+    }
+    if (!rd) {
+      for (uint8_t i = 0; i < len; i++) {
+        if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; } // TXE
+        I2C1->DATAR = buf[i];
+      }
+    }
+    if (prelen || len) {
+      if (!_wm_wait_s1(1u<<2)) { I2C1->CTLR1 |= (1u<<9); return false; } // BTF
+    }
+    if (!rd) { I2C1->CTLR1 |= (1u<<9); return true; } // STOP
   }
-  if (len) {
-    if (!_wm_wait_s1(1u<<2)) { I2C1->CTLR1 |= (1u<<9); return false; } // BTF
-  }
-  I2C1->CTLR1 |= (1u<<9); // STOP
-  return true;
-}
 
-// ── Probe (I2C address scan) ──────────────────────────────────────────────────
-
-static bool Wiremin_probe(uint8_t addr7) {
-  if (!_wm_wait_idle()) return false;
-
-  I2C1->CTLR1 |= (1u<<8);
-  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; }
-
-  I2C1->DATAR = addr7 << 1;
-  bool ack = _wm_wait_s1(1u<<1);
-  (void)I2C1->STAR1;
-  if (ack) (void)I2C1->STAR2;
-  I2C1->CTLR1 |= (1u<<9); // STOP
-  return ack;
-}
-
-// ── Master read ───────────────────────────────────────────────────────────────
-
-static bool Wiremin_read(uint8_t addr7, uint8_t *buf, uint8_t len) {
-  if (!len) return true;
-  if (!_wm_wait_idle()) return false;
-
+  // Read phase: repeated START when a write phase ran, plain START otherwise.
   I2C1->CTLR1 |= (1u<<10) | (1u<<8); // ACK=1, START
-  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; }
-
+  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; } // SB
   I2C1->DATAR = (addr7 << 1) | 1u; // read direction
 
   if (len == 1) {
@@ -335,69 +335,41 @@ static bool Wiremin_read(uint8_t addr7, uint8_t *buf, uint8_t len) {
   return true;
 }
 
-// ── Register helpers (master) ─────────────────────────────────────────────────
+// ── Master API (thin wrappers over _wm_xfer) ─────────────────────────────────
 
-// Write: START → addr+W → reg → data[0..len-1] → STOP
-static bool Wiremin_write_reg(uint8_t addr7, uint8_t reg, const uint8_t *data, uint8_t len) {
+static inline bool Wiremin_write(uint8_t addr7, const uint8_t *data, uint8_t len)
+  { return _wm_xfer(addr7, 0, 0, (uint8_t *)data, len, 0); }
+
+static inline bool Wiremin_read(uint8_t addr7, uint8_t *buf, uint8_t len)
+  { return _wm_xfer(addr7, 0, 0, buf, len, 1); }
+
+// 8-bit register address (most sensors)
+static inline bool Wiremin_write_reg(uint8_t addr7, uint8_t reg, const uint8_t *data, uint8_t len)
+  { return _wm_xfer(addr7, reg, 1, (uint8_t *)data, len, 0); }
+
+static inline bool Wiremin_read_reg(uint8_t addr7, uint8_t reg, uint8_t *buf, uint8_t len)
+  { return _wm_xfer(addr7, reg, 1, buf, len, 1); }
+
+// 16-bit memory/register address, high byte first (24FC256 EEPROM etc.)
+static inline bool Wiremin_write_reg16(uint8_t addr7, uint16_t reg, const uint8_t *data, uint8_t len)
+  { return _wm_xfer(addr7, reg, 2, (uint8_t *)data, len, 0); }
+
+static inline bool Wiremin_read_reg16(uint8_t addr7, uint16_t reg, uint8_t *buf, uint8_t len)
+  { return _wm_xfer(addr7, reg, 2, buf, len, 1); }
+
+// ── Probe (I2C address scan) ──────────────────────────────────────────────────
+// Kept separate: routing this through _wm_xfer costs ~28 bytes in sketches that
+// scan and nothing else.
+static bool Wiremin_probe(uint8_t addr7) {
   if (!_wm_wait_idle()) return false;
 
   I2C1->CTLR1 |= (1u<<8);
   if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; }
-  I2C1->DATAR = addr7 << 1;
-  if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; }
-  (void)I2C1->STAR1; (void)I2C1->STAR2;
 
-  if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; } // TXE
-  I2C1->DATAR = reg;
-  for (uint8_t i = 0; i < len; i++) {
-    if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; }
-    I2C1->DATAR = data[i];
-  }
-  if (!_wm_wait_s1(1u<<2)) { I2C1->CTLR1 |= (1u<<9); return false; } // BTF
+  I2C1->DATAR = addr7 << 1;
+  bool ack = _wm_wait_s1(1u<<1);
+  (void)I2C1->STAR1;
+  if (ack) (void)I2C1->STAR2;
   I2C1->CTLR1 |= (1u<<9); // STOP
-  return true;
-}
-
-// Read with repeated START: START → addr+W → reg → rSTART → addr+R → buf[0..len-1] → STOP
-static bool Wiremin_read_reg(uint8_t addr7, uint8_t reg, uint8_t *buf, uint8_t len) {
-  if (!len) return false;
-  if (!_wm_wait_idle()) return false;
-
-  // Write phase: send register address (no STOP)
-  I2C1->CTLR1 |= (1u<<8);
-  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; }
-  I2C1->DATAR = addr7 << 1;
-  if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; }
-  (void)I2C1->STAR1; (void)I2C1->STAR2;
-  if (!_wm_wait_s1(1u<<7)) { I2C1->CTLR1 |= (1u<<9); return false; } // TXE
-  I2C1->DATAR = reg;
-  if (!_wm_wait_s1(1u<<2)) { I2C1->CTLR1 |= (1u<<9); return false; } // BTF
-
-  // Repeated START → read phase
-  I2C1->CTLR1 |= (1u<<10) | (1u<<8); // ACK=1, START
-  if (!_wm_wait_s1(1u<<0)) { I2C1->CTLR1 |= (1u<<9); return false; }
-  I2C1->DATAR = (addr7 << 1) | 1u;
-
-  if (len == 1) {
-    I2C1->CTLR1 &= ~(1u<<10);
-    if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; }
-    (void)I2C1->STAR1; (void)I2C1->STAR2;
-    I2C1->CTLR1 |= (1u<<9);
-    if (!_wm_wait_s1(1u<<6)) return false;
-    buf[0] = (uint8_t)I2C1->DATAR;
-    return true;
-  }
-
-  if (!_wm_wait_s1(1u<<1)) { (void)I2C1->STAR1; I2C1->CTLR1 |= (1u<<9); return false; }
-  (void)I2C1->STAR1; (void)I2C1->STAR2;
-
-  for (uint8_t i = 0; i < len; i++) {
-    if (i == len - 1) {
-      I2C1->CTLR1 &= ~(1u<<10);
-      I2C1->CTLR1 |= (1u<<9);
-    }
-    if (!_wm_wait_s1(1u<<6)) return false;
-    buf[i] = (uint8_t)I2C1->DATAR;
-  }
-  return true;
+  return ack;
 }

@@ -59,6 +59,49 @@ https://github.com/tarosay/board_manager_files/raw/main/package_uiap_hid_index.j
 
 ---
 
+## 書き込み方法
+
+### 1. 基板を書き込みモードにする
+
+**基板のボタンを押しながら USB ケーブルを接続し、すぐにボタンを離します。**
+
+これで基板がブートローダとして起動します。通常の HID デバイスではなく、
+ブートローダの USB デバイスとして PC から見える状態になります。
+
+### 2. Arduino IDE から書き込む
+
+スケッチを開いて、いつもどおり「書き込み」を実行するだけです。
+
+**書き込み器（WCH-LinkE など）は要りません。** USB ケーブル 1 本で書けます。
+
+### 仕組み
+
+`Tools > Upload method` は既定の `minichlink` のままで構いません。
+`platform.txt` の recipe は次のようになっていて、プログラマの指定（`-C`）がありません。
+
+```
+tools.minichlink.upload.pattern="{path}{cmd}" -w "{build.path}/{build.project_name}.bin" flash
+```
+
+指定が無いとき minichlink は対応する書き込み先を順に探し、
+**この基板のブートローダを名前で見つけます。**
+
+```
+Found WCH Link
+Found ESP32S2 Programmer
+Found NHC-Link042 Programmer
+Found B003Fun Bootloader
+Found Ardulink Programmer
+Found UIAPduino Pro Micro CH32V003 V1.4 Bootloader   ← これに当たる
+```
+
+見つかったブートローダへ、ビルドした `.bin` を USB 経由で流し込みます。
+
+`WCH-SWD`（WCH-LinkE）や `WCH-ISP` を選ぶこともできますが、
+そちらは外部の書き込み器が必要です。ブートローダ経由で書けない場合の代替です。
+
+---
+
 ## Tools メニュー
 
 ### USB（USB モード選択）
@@ -440,10 +483,13 @@ Wire.h の代替となる最小限の I2C ドライバです。Flash 使用量�
 
 // マスター
 Wiremin_begin();                              // 100kHz で初期化
+Wiremin_begin_fast();                        // 400kHz で初期化
 Wiremin_write(addr7, data, len);             // バイト列送信
 Wiremin_read(addr7, buf, len);              // バイト列受信
-Wiremin_write_reg(addr7, reg, data, len);   // レジスタ書き込み
-Wiremin_read_reg(addr7, reg, buf, len);     // レジスタ読み出し（repeated START）
+Wiremin_write_reg(addr7, reg, data, len);   // レジスタ書き込み（アドレス 8bit）
+Wiremin_read_reg(addr7, reg, buf, len);     // レジスタ読み出し（アドレス 8bit・repeated START）
+Wiremin_write_reg16(addr7, reg, data, len); // 同上、アドレス 16bit（EEPROM 等）
+Wiremin_read_reg16(addr7, reg, buf, len);   // 同上、アドレス 16bit（repeated START）
 Wiremin_probe(addr7);                       // ACK 確認（スキャン用）
 
 // スレーブ
@@ -471,6 +517,24 @@ Wiremin_write_reg(0x3C, 0x00, &cmd, 1);
 // データ送信（128バイト/ページ）
 Wiremin_write_reg(0x3C, 0x40, buf, 128);
 ```
+
+**EEPROM（24FC256）例:**
+
+メモリアドレスが 16bit のデバイスには `_reg16` 版を使います。
+
+```cpp
+// 0x0040 番地から 64 バイト書き込む
+Wiremin_write_reg16(0x50, 0x0040, buf, 64);
+
+// 0x0040 番地から 64 バイト読み出す
+Wiremin_read_reg16(0x50, 0x0040, buf, 64);
+```
+
+> **ページ境界と書き込み待ちはスケッチ側の担当です。** EEPROM はページ
+> （24FC256 なら 64 バイト）を越えた分をそのページの先頭に折り返して上書きします。
+> また書き込み中（最大 5 ms）はアドレスに応答しないため、`Wiremin_probe()` が
+> ACK を返すまで待ってから次の書き込みへ進んでください。
+> 実装はスケッチ例 `Wiremin_EEPROM_24FC256` を参照してください。
 
 > **注意:** Wire.h と同時に使用不可。スレーブモードでは I2C センサを同時接続不可（I2C1 が1つのみ）。
 
@@ -701,6 +765,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | Wiremin_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
 | Wiremin_BMP280 | BMP280 センサの温度・気圧を WebHID へ出力 |
 | Wiremin_bmi270 | BMI270 6軸 IMU の加速度を WebHID へ出力 |
+| Wiremin_EEPROM_24FC256 | I2C EEPROM 24FC256 の読み書きテスト（16bit アドレス・ページ境界・不揮発の確認） |
 | Wiremin_size_test | Flash サイズ計測用（Wire.h との比較に使用） |
 
 ### SDmin
@@ -727,7 +792,21 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.9（最新）
+### v1.2.10（最新）
+
+- **Wiremin に 16bit アドレス版の API を追加** — `Wiremin_write_reg16()` / `Wiremin_read_reg16()`
+  - メモリアドレスが 16bit の I2C EEPROM（24FC256 など）を、スケッチ側でアドレス 2 バイトを組み立てずに読み書きできる
+  - 特に読み出しは「アドレス送信 → repeated START → 読み出し」を STOP を挟まずに繋ぐ必要があり、従来は既存 API の組み合わせでは書けなかった
+- **マスタ転送の実装を 1 本に統合**（`libraries/Wiremin/Wiremin.h`）
+  - `write` / `read` / `write_reg` / `read_reg` / `_reg16` がすべて内部の `_wm_xfer()` を呼ぶだけになった。START/ADDR/TXE/BTF/STOP の手順が 1 箇所にまとまり、アドレス長は 0〜4 バイトで指定する形になった
+  - スケッチ例 9 本の合計で **▲40 バイト**。最も Flash が厳しい `Wiremin_bmi270` は 15,696 → **15,616 バイト**（95%）
+  - **挙動変更**: `Wiremin_read(addr, buf, 0)` の戻り値が `true` → `false`（読むものがないためバスを操作しない）
+- **スケッチ例 `Wiremin_EEPROM_24FC256` を追加** — 24FC256（32KB）の書き込み・読み出しテスト
+  - 16bit アドレス、64 バイトのページ境界をまたぐ分割、ACK ポーリングによる書き込み完了待ち、シーケンシャル読み出し、最終アドレス 0x7FFF、電源断をまたぐ保持までを実機で確認（Flash 5,996 バイト / 36%）
+  - ページ境界の分割と書き込み待ちはスケッチ側の担当。Wiremin はバス転送のみを行う
+- **README に「書き込み方法」を追記** — 基板のボタンを押しながら USB を接続してブートローダで起動し、そのまま IDE から書き込む手順（書き込み器不要）
+
+### v1.2.9
 
 - **HardwareSerial に USART 受信割り込みとリングバッファを追加** — `Serial.available()` / `read()` / `peek()` が使えるようになった（既定 64 バイト、`SERIAL_RX_BUFFER_SIZE` で変更可）
 - **`realloc()` が内容を保持しない問題を修正**（`cores/arduino/ch32_heap.c`）

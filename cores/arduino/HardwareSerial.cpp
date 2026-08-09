@@ -54,6 +54,12 @@ void HardwareSerial::init(PinName _rx, PinName _tx, PinName _rts, PinName _cts)
   _serial.pin_tx = _tx;
   _serial.pin_rts = _rts;
   _serial.pin_cts = _cts;
+
+  _serial.rx_callback = NULL;
+  _serial.rx_buff = _rx_buffer;
+  _serial.rx_size = SERIAL_RX_BUFFER_SIZE;
+  _serial.rx_head = 0;
+  _serial.rx_tail = 0;
 }
 
 
@@ -138,32 +144,54 @@ void HardwareSerial::begin(unsigned long baud, byte config)
       break;
   }
   uart_init(&_serial, (uint32_t)baud, databits, parity, stopbits);
+
+  _serial.rx_head = 0;
+  _serial.rx_tail = 0;
+  uart_attach_rx_callback(&_serial, _rx_complete_irq);
 }
 
 void HardwareSerial::end()
 {
   uart_deinit(&_serial);
+
+  _serial.rx_head = 0;
+  _serial.rx_tail = 0;
+}
+
+// Called from the RXNE interrupt: store the received byte, drop it when the
+// ring buffer is full so the oldest data is kept.
+void HardwareSerial::_rx_complete_irq(serial_t *obj)
+{
+  rx_buffer_index_t i = (rx_buffer_index_t)((obj->rx_head + 1) % SERIAL_RX_BUFFER_SIZE);
+
+  if (i != obj->rx_tail) {
+    obj->rx_buff[obj->rx_head] = obj->recv;
+    obj->rx_head = i;
+  }
 }
 
 int HardwareSerial::available(void)
 {
-  return -1;
+  return ((unsigned int)(SERIAL_RX_BUFFER_SIZE + _serial.rx_head - _serial.rx_tail)) % SERIAL_RX_BUFFER_SIZE;
 }
 
 int HardwareSerial::peek(void)
 {
-   return -1;
+  if (_serial.rx_head == _serial.rx_tail) {
+    return -1;
+  }
+  return _rx_buffer[_serial.rx_tail];
 }
 
 int HardwareSerial::read(void)
 {
-
-  unsigned char c;
-  if(uart_getc(&_serial, &c) == 0){
-    return c;
-  }else{
+  if (_serial.rx_head == _serial.rx_tail) {
     return -1;
   }
+
+  unsigned char c = _rx_buffer[_serial.rx_tail];
+  _serial.rx_tail = (rx_buffer_index_t)((_serial.rx_tail + 1) % SERIAL_RX_BUFFER_SIZE);
+  return c;
 }
 
 

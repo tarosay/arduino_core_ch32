@@ -155,9 +155,13 @@ public:
     void setCts(PinName _cts);
     void setRtsCts(PinName _rts, PinName _cts);
     void setHandler(void *handler);
+
+    // Called from the uart RXNE interrupt to push a byte into _rx_buffer
+    static void _rx_complete_irq(serial_t *obj);
   private:
     uint8_t _config;
     unsigned long _baud;
+    unsigned char _rx_buffer[SERIAL_RX_BUFFER_SIZE];
     void init(PinName _rx, PinName _tx, PinName _rts = NC, PinName _cts = NC);
 };
 

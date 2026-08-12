@@ -86,6 +86,18 @@
   #define NEOPIXELMIN_RESET_US 300u
 #endif
 
+/* The reset gap is timed with SysTick, not micros().
+   micros() drags in the same uint64_t division as millis() and costs 2224
+   bytes of Flash on CH32V003 (measured) -- more than twice the size of this
+   whole driver, spent on one idle wait. SysTick->CNT is the free-running
+   counter micros() itself reads, so counting raw ticks measures exactly the
+   same thing without the division.
+   The 32-bit count wraps after ~89 s at 48 MHz. A wrap can only make show()
+   wait one extra reset gap (300 us); it can never cut the gap short, because
+   reaching the wrap means far more than 300 us has passed already. */
+#define _NP_RESET_TICKS ((uint32_t)(NEOPIXELMIN_RESET_US) * \
+                         (uint32_t)(NEOPIXELMIN_FCPU_HZ / 1000000UL))
+
 /* Symbol shape, in SPI bits (166.7 ns each) out of the 8 bits per WS2812 bit.
    Defaults: T0H = 2 bits = 333 ns, T1H = 5 bits = 833 ns.
    Raise T1H to 6 (1000 ns) if the FIRST LED of the strip reads ones as zeros —
@@ -173,13 +185,13 @@ public:
                 | SPI_CTLR1_BIDIMODE | SPI_CTLR1_BIDIOE  // 1-line, transmit
                 | SPI_CTLR1_SPE;                    // enable
     // CPOL=0, CPHA=0, MSB first.
-    _last_us = micros();
+    _last = SysTick->CNT;
   }
 
   void show(void) {
     // Hold the line low long enough for the previous frame to latch and for
     // the strip to resynchronise. Costs nothing if the sketch is already slow.
-    while ((uint32_t)(micros() - _last_us) < (uint32_t)NEOPIXELMIN_RESET_US) { }
+    while ((uint32_t)(SysTick->CNT - _last) < _NP_RESET_TICKS) { }
 
     const uint8_t *p = _buf;
     uint16_t       n = (uint16_t)(_n * 3u);
@@ -214,7 +226,7 @@ public:
 #ifdef NEOPIXELMIN_ATOMIC
     interrupts();
 #endif
-    _last_us = micros();
+    _last = SysTick->CNT;
   }
 
   void clear(void) {
@@ -278,7 +290,7 @@ private:
   }
 
   uint8_t  _buf[NEOPIXELMIN_MAX_LEDS * 3];
-  uint32_t _last_us;
+  uint32_t _last;
   uint16_t _n;
   uint16_t _bri;
   uint8_t  _rO, _gO, _bO;

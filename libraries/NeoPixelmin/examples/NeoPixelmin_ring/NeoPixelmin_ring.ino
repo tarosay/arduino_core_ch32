@@ -5,7 +5,16 @@
  *   WS2812B DIN → pin 8 (PC6 / SPI1 MOSI)  ※このピンに固定
  *   WS2812B VCC → 5V(または3.3V)、GND → GND
  *
- * FQBN: UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,opt=oslto
+ * Tools の設定:
+ *   Board Version : V1.4
+ *   USB           : WebHID Only
+ *   Optimize      : Smallest (-Os) with LTO
+ *   FQBN 表記なら UIAP_HID:ch32v:CH32V003:pnum=V14,usb=webhid,opt=oslto
+ *
+ * sketch.yaml は置いていない。置くと arduino-cli も IDE も profile build に入り、
+ * インストール済みのコアを見なくなる。バージョンを書かなければ解決できずに失敗し、
+ * 書けば index から取り直したコアでビルドされる。どちらにしても、手元で直した
+ * ライブラリを実機で試せない。
  */
 
 // LEDの個数（バッファサイズもこれに合わせて確保する）

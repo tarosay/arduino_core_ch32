@@ -672,6 +672,83 @@ void setup() {
 
 ---
 
+## NeoPixelmin ライブラリ
+
+Adafruit_NeoPixel.h の代替となる最小限の WS2812B（NeoPixel）ドライバです。  
+波形を GPIO のサイクル数え打ちではなく **SPI1 で生成する**ため、`show()` 中に割り込みを止める必要がありません。ソフトウェア USB を使うこのボードでは、これが効きます。
+
+### Flash サイズ比較
+
+LED 12 個のリング制御スケッチ（`UIAP_HID:ch32v:CH32V003` 既定オプション）で実測。
+
+| ライブラリ | Flash | RAM |
+|---|---|---|
+| Adafruit_NeoPixel 1.15.5 | 8,500 バイト（52%） | 276 バイト |
+| NeoPixelmin.h | 5,932 バイト（36%） | 220 バイト |
+| **削減量** | **▲ 2,568 バイト** | **▲ 56 バイト** |
+
+> Adafruit 版はピクセルバッファを `malloc()` で確保するため、ビルド結果の「グローバル変数」に  
+> 表示される 232 バイトにバッファが含まれません。上表の 276 バイトは、払い出し 36 バイトと  
+> ヒープのブロックヘッダ 8 バイトを加えた実使用量です。RAM 差が小さいのは、削っているのが  
+> ヒープ管理のオーバーヘッドだけだからです（バッファ 36 バイト自体はどちらも必要）。
+
+### 配線
+
+**DIN は pin 8（PC6 / SPI1 MOSI）に固定です。** SCK・MISO・NSS は使いません（SPI1 を 1 線送信専用モードで動かすため、消費するのは PC6 だけです）。`SPI.h` および `SDmin` とは同時に使えません。
+
+### API
+
+```cpp
+#define LED_COUNT 12
+#define NEOPIXELMIN_MAX_LEDS LED_COUNT   // 定義必須。未定義はコンパイルエラー
+#include <NeoPixelmin.h>
+
+NeoPixelmin pixels(LED_COUNT, NEOPIXELMIN_PIN, NEO_GRB + NEO_KHZ800);
+
+pixels.begin();                          // SPI1 / PC6 初期化
+pixels.show();                           // バッファをテープへ送信
+pixels.clear();                          // 全消灯（送信はしない）
+pixels.setPixelColor(i, color);          // color は Color() の戻り値
+pixels.setPixelColor(i, r, g, b);
+pixels.getPixelColor(i);                 // 0x00RRGGBB（明るさ補正前）
+pixels.fill(color, first, count);        // count 0 = 末尾まで
+pixels.setBrightness(b);                 // 0〜255（バッファは破壊しない）
+pixels.numPixels();                      // 確保できた個数
+pixels.ok();                             // 個数超過・ピン誤りなら false
+NeoPixelmin::Color(r, g, b);             // 0x00RRGGBB に詰める
+```
+
+`NEO_RGB` / `NEO_GRB` / `NEO_BRG` などの色順指定は Adafruit_NeoPixel と同じ値です。
+
+### 設定マクロ
+
+`#include` より前に定義します。
+
+| マクロ | 既定 | 説明 |
+|---|---|---|
+| `NEOPIXELMIN_MAX_LEDS` | **なし（必須）** | ピクセルバッファの個数。1 個 3 バイト |
+| `NEOPIXELMIN_RESET_US` | 300 | フレーム前に線を Low に保つ時間（µs） |
+| `NEOPIXELMIN_T0H_BITS` | 2 | "0" の High 幅（SPI ビット数・333ns） |
+| `NEOPIXELMIN_T1H_BITS` | 5 | "1" の High 幅（SPI ビット数・833ns） |
+| `NEOPIXELMIN_ATOMIC` | 未定義 | 定義すると `show()` 中の割り込みを禁止 |
+
+`NEOPIXELMIN_MAX_LEDS` に既定値はありません。小さすぎれば黙って切り捨て、大きすぎれば RAM を無駄にし、どちらも実機に載せるまで気づけないためです。
+
+### Adafruit_NeoPixel.h からの移植
+
+| Adafruit_NeoPixel.h | NeoPixelmin.h |
+|---|---|
+| `Adafruit_NeoPixel pixels(n, pin, type);` | `NeoPixelmin pixels(n, NEOPIXELMIN_PIN, type);` |
+| （バッファは自動確保） | `#define NEOPIXELMIN_MAX_LEDS n` が必要 |
+| 任意のピンに出力できる | **pin 8（PC6）固定** |
+| `gamma8()` / `ColorHSV()` / RGBW / `NEO_KHZ400` | 非対応 |
+
+`begin` / `show` / `clear` / `setPixelColor` / `getPixelColor` / `fill` / `setBrightness` / `Color` / `numPixels` は同じ意味で動きます。`setBrightness()` の計算式も Adafruit と同一のため、見た目の明るさも変わりません。
+
+> **必要なクロック**: SPI を 6MHz にできる必要があるため、`Tools > Clock Select` は 48MHz / 24MHz / 12MHz のいずれかにしてください。それ以外はコンパイルエラーになります。
+
+---
+
 ## コアの独自改良点
 
 ### `pinDisconnectDebug(uint32_t pin)`
@@ -778,6 +855,15 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | SDLog | UART RX で受信したデータをマイクロSD カードに記録する OpenLog 互換ロガー |
 | SeekWriteAt | ランダムアクセス API（`sm_seek` / `sm_write_at`）の最小デモ。TEST.TXT の途中だけを部分上書きし LED で検証結果を表示（v1.2.5） |
 
+### NeoPixelmin
+
+`ファイル` → `スケッチ例` → `NeoPixelmin` から開けます。  
+WS2812B の DIN を pin 8（PC6）に接続してください。
+
+| スケッチ | 内容 |
+|---------|------|
+| NeoPixelmin_ring | WS2812B 12 連リングを赤・緑・青で順に流し、全体をフェードさせるデモ |
+
 ---
 
 ## 対応 OS
@@ -792,7 +878,20 @@ digitalWrite(GPIO_PIN_6, HIGH);
 
 ## 更新履歴
 
-### v1.2.10（最新）
+### v1.2.11（最新）
+
+- **NeoPixelmin ライブラリを追加** — WS2812B（NeoPixel）を SPI1 で駆動する最小限のドライバ
+  - 波形を GPIO のサイクル数え打ちではなく **SPI1 で生成**する。1 ビット = 1 SPI バイト（6MHz）で `"0"` = `0b11000000`、`"1"` = `0b11111000`。High 幅は 333ns / 833ns で WS2812B の規定内
+  - このため **`show()` 中に割り込みを止めない**。Adafruit_NeoPixel の CH32 実装は `noInterrupts()` で囲むため 12 個で 7.7ms 割り込みが停止するが、ソフトウェア USB を使うこのボードではそれが問題になる
+  - LED 12 個で **Flash 8,500 → 5,932 バイト（▲2,568）**、実 RAM 276 → 220 バイト（▲56）
+  - `begin` / `show` / `clear` / `setPixelColor` / `getPixelColor` / `fill` / `setBrightness` / `Color` / `numPixels` は Adafruit_NeoPixel と同じ意味で動く。`setBrightness()` の計算式も同一
+  - **DIN は pin 8（PC6 / SPI1 MOSI）固定。** `SPI.h` / `SDmin` とは併用不可
+  - `NEOPIXELMIN_MAX_LEDS` は**定義必須**（未定義はコンパイルエラー）。既定値を置くと、小さすぎれば黙って切り捨て、大きすぎれば RAM を無駄にし、どちらも実機まで気づけないため
+  - **SPI1 はアイドル時に MOSI を High にする**ため、PC6 は普段 GPIO 出力の Low で保持し、データを流す間だけ SPI に渡している。これをしないとフレーム間がリセットにならず、先頭の LED だけが表示されない（後段は先頭 LED が整形し直した信号を見るため正常に光ってしまい、原因が分かりにくい）
+  - 非対応: RGBW / SK6812、`NEO_KHZ400`、`gamma8()`、`ColorHSV()`
+- **スケッチ例 `NeoPixelmin_ring` を追加** — WS2812B 12 連リングのデモ（Flash 5,932 バイト / 36%）
+
+### v1.2.10
 
 - **Wiremin に 16bit アドレス版の API を追加** — `Wiremin_write_reg16()` / `Wiremin_read_reg16()`
   - メモリアドレスが 16bit の I2C EEPROM（24FC256 など）を、スケッチ側でアドレス 2 バイトを組み立てずに読み書きできる

@@ -42,6 +42,7 @@
  *   setBrightness(b) / getBrightness()
  *   Color(r, g, b)                — pack into 0x00RRGGBB (static)
  *   numPixels()                   — pixels actually allocated
+ *   getPixels()                   — raw buffer, numPixels()*3 bytes
  *   ok()                          — false if count > MAX or pin was wrong
  *
  *   Not provided (deliberately, to stay small): RGBW/SK6812, NEO_KHZ400,
@@ -263,6 +264,22 @@ public:
   uint8_t getBrightness(void) const { return _bri ? (uint8_t)(_bri - 1u) : 255; }
 
   uint16_t numPixels(void) const { return _n; }
+
+  // Raw pixel buffer, numPixels() * 3 bytes. Lets a sketch rotate or dim the
+  // strip as plain bytes instead of taking every pixel apart with
+  // getPixelColor() and putting it back together with setPixelColor() -- the
+  // round trip through 32-bit colors costs a few hundred bytes of Flash on
+  // this part, which matters when the sketch is already near the 16 KB limit.
+  // Three things differ from getPixelColor():
+  //   - the bytes are in strip order (G, R, B for NEO_GRB), not R, G, B
+  //   - the values are unscaled; setBrightness() is applied in show()
+  //   - there is no bounds check, so staying inside numPixels() * 3 is the
+  //     caller's job
+  // Reordering the color bytes is symmetric, so byte-level work on the buffer
+  // gives the same result as going through getPixelColor()/setPixelColor().
+  // const, returning a non-const pointer, matches Adafruit_NeoPixel.
+  uint8_t *getPixels(void) const { return (uint8_t *)_buf; }
+
   bool     ok(void) const { return _ok; }
 
   static uint32_t Color(uint8_t r, uint8_t g, uint8_t b) {

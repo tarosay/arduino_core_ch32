@@ -536,6 +536,25 @@ Wiremin_read_reg16(0x50, 0x0040, buf, 64);
 > ACK を返すまで待ってから次の書き込みへ進んでください。
 > 実装はスケッチ例 `Wiremin_EEPROM_24FC256` を参照してください。
 
+> **1Mbit 品（CAT24M01 / S-24CM01C）は 128KB あり、アドレスが 17bit になります。**
+> 17bit 目（a16）はメモリアドレスではなく**デバイスアドレスの最下位ビット**に載ります
+> （`1010 A2 A1 a16`）。A0 ピンが無いため、1 本のバスに繋げるのは最大 4 個です。
+>
+> ```cpp
+> // A1=HIGH, A2=LOW なら 0x52（下位 64KB）/ 0x53（上位 64KB）
+> #define EEP_DEV(addr) (0x52 | (((addr) >> 16) & 1))
+>
+> Wiremin_write_reg16(EEP_DEV(a), (uint16_t)a, buf, n);
+> ```
+>
+> 分割の条件が 24FC256 より 1 つ多く、書き込みと読み出しで境界が違います。
+>
+> - **書き込みは 256 バイトのページ境界**で切る
+> - **読み出しは 64K 境界**で切る。シーケンシャル読み出しは a16 を繰り上げないので、0x0FFFF の次は 0x00000 に戻ります
+> - `len` が `uint8_t` なので **1 転送は最大 255 バイト**。256 バイトのページを一度に書くことはできません
+>
+> 実装はスケッチ例 `Wiremin_EEPROM_CAT24M01` を参照してください（CAT24M01 実機で確認済み）。
+
 > **注意:** Wire.h と同時に使用不可。スレーブモードでは I2C センサを同時接続不可（I2C1 が1つのみ）。
 
 ---
@@ -851,6 +870,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | Wiremin_BMP280 | BMP280 センサの温度・気圧を WebHID へ出力 |
 | Wiremin_bmi270 | BMI270 6軸 IMU の加速度を WebHID へ出力 |
 | Wiremin_EEPROM_24FC256 | I2C EEPROM 24FC256 の読み書きテスト（16bit アドレス・ページ境界・不揮発の確認） |
+| Wiremin_EEPROM_CAT24M01 | I2C EEPROM CAT24M01（1Mbit）の読み書きテスト（17bit アドレス・256B ページ・64K 境界の確認） |
 | Wiremin_size_test | Flash サイズ計測用（Wire.h との比較に使用） |
 
 ### SDmin

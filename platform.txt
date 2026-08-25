@@ -187,6 +187,19 @@ tools.minichlink.program.pattern=
 tools.minichlink.erase.pattern=
 tools.minichlink.bootloader.pattern=
 
+## uiapflash (UIAPduino / rv003usb ブートローダ。USB だけで書ける)
+tools.uiapflash.path={runtime.tools.uiapflash-1.0.0.path}/
+tools.uiapflash.path.windows={runtime.tools.uiapflash-1.0.0.path}/
+tools.uiapflash.cmd=uiapflash
+tools.uiapflash.cmd.windows=uiapflash.exe
+tools.uiapflash.upload.pattern="{path}{cmd}" {upload.verbose} --flash-size {upload.maximum_size} "{build.path}/{build.project_name}.bin"
+tools.uiapflash.upload.pattern.windows="{path}{cmd}" {upload.verbose} --flash-size {upload.maximum_size} "{build.path}\{build.project_name}.bin"
+tools.uiapflash.upload.params.verbose=-v
+tools.uiapflash.upload.params.quiet=
+tools.uiapflash.program.pattern=
+tools.uiapflash.erase.pattern=
+tools.uiapflash.bootloader.pattern=
+
 ## WCH-ISP
 tools.wchisp.path={runtime.tools.wchisp.path}/
 tools.wchisp.cmd=wchisp

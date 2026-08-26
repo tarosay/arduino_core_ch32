@@ -97,8 +97,35 @@ Found UIAPduino Pro Micro CH32V003 V1.4 Bootloader   ← これに当たる
 
 見つかったブートローダへ、ビルドした `.bin` を USB 経由で流し込みます。
 
-`WCH-SWD`（WCH-LinkE）や `WCH-ISP` を選ぶこともできますが、
-そちらは外部の書き込み器が必要です。ブートローダ経由で書けない場合の代替です。
+### ほかの選択肢
+
+`Tools > Upload method` では次のものが選べます。
+
+| 選択肢 | 書き込み器 | 用途 |
+|--------|-----------|------|
+| **minichlink**（既定） | 不要 | 通常はこれ。**macOS では動きません** |
+| **UIAPduino (USB)** | 不要 | **macOS はこちらを選んでください。** Windows / Linux でも使えます |
+| WCH-SWD | WCH-LinkE が必要 | ブートローダ経由で書けない場合の代替 |
+| WCH-ISP | 書き込み器が必要 | 同上 |
+
+#### UIAPduino (USB) — macOS はこちら
+
+macOS には minichlink の実行ファイルが同梱されておらず、`exec format error` で
+起動すらしません。`Tools > Upload method` から `UIAPduino (USB)` を選んでください。
+
+この基板のブートローダ（rv003usb）だけを相手にする専用ツール `uiapflash` が呼ばれます。
+
+```
+tools.uiapflash.upload.pattern="{path}{cmd}" {upload.verbose} --flash-size {upload.maximum_size} "{build.path}/{build.project_name}.bin"
+```
+
+USB HID の Feature Report だけで書くので、ドライバも外部ライブラリも要りません。
+64 バイトごとに読み返して比較し、違うところだけ消して書きます。
+全一致を確認してから、そのままアプリとして起動します。
+
+基板を書き込みモードにする手順（ボタンを押しながら USB 接続）は minichlink のときと同じです。
+Windows / Linux でも使えますが、そちらは minichlink がそのまま動くので、
+既定を変える必要はありません。
 
 ---
 
@@ -900,13 +927,29 @@ WS2812B の DIN を pin 8（PC6）に接続してください。
 |----|------|
 | Windows | 動作確認済み（Arduino IDE 2.0 以上） |
 | Linux | 動作確認中 |
-| macOS | 動作確認中 |
+| macOS | 動作確認済み（v1.2.14 以降。Upload method に `UIAPduino (USB)` を選択） |
 
 ---
 
 ## 更新履歴
 
-### v1.2.13（最新）
+### v1.2.14（最新）
+
+- **書き込み方法に `UIAPduino (USB)` を追加** — macOS から書き込めるようになった
+  - `minichlink` には macOS 版のバイナリが同梱されておらず、Mac では `exec format error` で起動すらしなかった。**ビルドは通るのに書き込めない**、という状態だった
+  - この基板のブートローダ（rv003usb）だけを相手にする専用ツール `uiapflash` を用意した。使うのは USB HID の Feature Report だけで、libusb などの外部ライブラリに依存しない。macOS 版は Apple Silicon と Intel の両方を含む
+  - **既定は `minichlink` のまま。** Windows / Linux はこれまでどおりで、何も変える必要はない。macOS で書くときに `Tools > Upload method` から `UIAPduino (USB)` を選ぶ
+  - 書き込み手順（ボタンを押しながら USB 接続 → 書き込み）は変わらない。64 バイトごとに読み返して比較し、違うところだけ消して書き、全一致を確認してからアプリを起動する
+  - macOS と Windows で実機書き込みを確認済み。Linux はビルドのみ確認（実機は未検証）
+- **スケッチ例 `Wiremin_EEPROM_CAT24M01` を追加** — 1Mbit の I2C EEPROM（onsemi CAT24M01 / ABLIC S-24CM01C）の読み書きテスト
+  - 容量 128KB でアドレスが 17bit ある。17bit 目（a16）はメモリアドレスではなく**デバイスアドレスの最下位ビット**に載る（`1010 A2 A1 a16`）。A0 ピンが無いので 1 バスに最大 4 個
+  - 分割の境界が書き込みと読み出しで違う。**書き込みは 256 バイトのページ境界**、**読み出しは 64K 境界**（シーケンシャル読み出しは a16 を繰り上げないため、0x0FFFF の次は 0x00000 に戻る）
+  - `len` が `uint8_t` なので 1 転送は最大 255 バイト。256 バイトのページを一度には書けないので、128 バイトずつに切っている
+  - **Wiremin ライブラリは無変更。** スケッチ側だけで 1Mbit 品に対応できることの確認も兼ねている
+  - 実機で 10 項目 ALL PASS（実 `.bin` 6,756 バイト / RAM 436 バイト）
+  - README の Wiremin の EEPROM 節にも 1Mbit 品の注記を追加した
+
+### v1.2.13
 
 - **NeoPixelmin に `getPixels()` を追加** — 画素バッファへの参照を返す。追加のみで、既存 API の変更はない
   - 回転や減光は、やりたいことが**バイト列の操作**であって色として解釈し直す必要がない。それを `getPixelColor()` で 32bit に組み立て `setPixelColor()` で分解し直すと、往復だけで数百バイトの Flash を使う。16KB しかないこの石ではそれが効く

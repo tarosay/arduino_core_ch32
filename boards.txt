@@ -41,14 +41,14 @@ CH32V003.menu.pnum.V14.build.IQ_math_RV32=
 CH32V003.menu.pnum.V14.build.ch_extra_lib=
 
 # Upload method
-CH32V003.menu.upload_method.uiapflash=UIAPduino (USB)
-CH32V003.menu.upload_method.uiapflash.upload.protocol=
-CH32V003.menu.upload_method.uiapflash.upload.options=
-CH32V003.menu.upload_method.uiapflash.upload.tool=uiapflash
 CH32V003.menu.upload_method.minichlink=minichlink
 CH32V003.menu.upload_method.minichlink.upload.protocol=
 CH32V003.menu.upload_method.minichlink.upload.options=
 CH32V003.menu.upload_method.minichlink.upload.tool=minichlink
+CH32V003.menu.upload_method.uiapflash=UIAPduino (USB)
+CH32V003.menu.upload_method.uiapflash.upload.protocol=
+CH32V003.menu.upload_method.uiapflash.upload.options=
+CH32V003.menu.upload_method.uiapflash.upload.tool=uiapflash
 CH32V003.menu.upload_method.swdMethod=WCH-SWD
 CH32V003.menu.upload_method.swdMethod.upload.protocol=
 CH32V003.menu.upload_method.swdMethod.upload.options=

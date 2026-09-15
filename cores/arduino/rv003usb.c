@@ -1,3 +1,6 @@
+// rv003usb は CH32V003 基板専用（PD3/PD4 を D+/D- に使う）。CH32V006 では組み込まない。
+#if !defined(CH32VM00X)
+
 #include <stdint.h>
 
 #define INSTANCE_DESCRIPTORS 1
@@ -455,3 +458,5 @@ void usb_pid_handle_setup( uint32_t addr, uint8_t * data, uint32_t endp, uint32_
 #endif
 
 
+
+#endif // !defined(CH32VM00X)

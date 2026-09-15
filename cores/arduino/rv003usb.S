@@ -1,5 +1,8 @@
 // Test
 
+// rv003usb は CH32V003 基板専用（PD3/PD4 を D+/D- に使う）。CH32V006 では組み込まない。
+#if !defined(CH32VM00X)
+
 #include "ch32fun.h"
 #include "rv003usb.h"
 
@@ -910,3 +913,5 @@ always0:
 	.word 0x00
 
 #endif
+
+#endif // !defined(CH32VM00X)

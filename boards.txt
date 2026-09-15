@@ -113,3 +113,60 @@ CH32V003.menu.rtlib.none=None (ch32fun)
 CH32V003.menu.rtlib.none.build.flags.ldflags=
 CH32V003.menu.rtlib.nano=Newlib Nano
 CH32V003.menu.rtlib.nano.build.flags.ldflags=--specs=nano.specs --specs=nosys.specs
+
+
+##############################################################################
+## UIAPduino Pro Micro CH32V006
+## Based on upstream openwch CH32VM00X_EVT (CH32V006K8).
+
+CH32V006.name=UIAPduino Pro Micro CH32V006
+CH32V006.build.core=arduino
+CH32V006.build.board=CH32V006K8
+CH32V006.upload.maximum_size=0
+CH32V006.upload.maximum_data_size=0
+CH32V006.build.variant_h=variant_{build.board}.h
+CH32V006.build.ldscript=generated_ch32fun.ld
+CH32V006.build.flags.usb=-DUIAP_NO_USB
+CH32V006.debug.tool=gdb-WCH_LinkE
+
+# Board Version
+CH32V006.menu.pnum.V11=V1.1
+CH32V006.menu.pnum.V11.node=NODE_V006K8
+CH32V006.menu.pnum.V11.upload.maximum_size=63488
+CH32V006.menu.pnum.V11.upload.maximum_data_size=8192
+CH32V006.menu.pnum.V11.build.mcu=QingKe-V2C
+CH32V006.menu.pnum.V11.build.board=CH32V006K8
+CH32V006.menu.pnum.V11.build.series=CH32VM00X
+CH32V006.menu.pnum.V11.build.variant=CH32VM00X/CH32V006K8
+CH32V006.menu.pnum.V11.build.chip=CH32V006K8
+CH32V006.menu.pnum.V11.build.march=rv32ec_zmmul
+CH32V006.menu.pnum.V11.build.mabi=ilp32e
+CH32V006.menu.pnum.V11.build.math_lib_gcc=-lm
+CH32V006.menu.pnum.V11.build.IQ_math_RV32=
+CH32V006.menu.pnum.V11.build.ch_extra_lib=
+
+# Upload method
+CH32V006.menu.upload_method.minichlink=minichlink
+CH32V006.menu.upload_method.minichlink.upload.protocol=
+CH32V006.menu.upload_method.minichlink.upload.options=
+CH32V006.menu.upload_method.minichlink.upload.tool=minichlink
+
+# Clock
+CH32V006.menu.clock.48MHz_HSI=48MHz Internal
+CH32V006.menu.clock.48MHz_HSI.build.flags.clock=-DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000
+
+# Optimize
+CH32V006.menu.opt.osstd=Smallest (-Os default)
+CH32V006.menu.opt.osstd.build.flags.optimize=-Os
+CH32V006.menu.opt.oslto=Smallest (-Os) with LTO
+CH32V006.menu.opt.oslto.build.flags.optimize=-Os -flto
+
+# Debug information
+CH32V006.menu.dbg.none=None
+CH32V006.menu.dbg.none.build.flags.debug=-DNDEBUG
+CH32V006.menu.dbg.enable_sym=Symbols Enabled (-g)
+CH32V006.menu.dbg.enable_sym.build.flags.debug=-g -DNDEBUG
+
+# C Runtime Library
+CH32V006.menu.rtlib.nano=Newlib Nano (default)
+CH32V006.menu.rtlib.nano.build.flags.ldflags=--specs=nano.specs --specs=nosys.specs

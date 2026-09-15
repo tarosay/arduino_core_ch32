@@ -20,6 +20,8 @@ static uint8_t g_uiap_usb_inited  = 0;
  * ホスト側では CC ピン未検出のため無視される。
  * D- (PD4) は OUTPUT LOW のままにしておく（任意；SE0 回避のために明示する）。
  */
+#if !defined(CH32VM00X)
+// CH32V006 基板では PC4/PD2/PD3/PD4 が別用途（PD3/PD4 は USB-C CC1/CC2）なので触らない。
 static void usb_disconnect(void)
 {
     RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD;
@@ -37,6 +39,9 @@ static void usb_disconnect(void)
                   | (0x2u << (4 * 4));  /* PD4 D-:  2MHz PP output  */
     GPIOD->BCR = (1u << 4);             /* D- = Low */
 }
+#else
+static void usb_disconnect(void) {}
+#endif
 
 // GetTick()をSysTick->CNT(48MHz自由動作)から計算してオーバーライドする。
 // SysTick割り込みを有効化するとUSBソフトウェアスタックのタイミングが壊れるため、

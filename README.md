@@ -140,7 +140,7 @@ USB の動作モードを選択します。**デフォルトは WebHID Only** �
 | **WebHID Only**（デフォルト） | ブラウザ（Chrome/Edge）と双方向通信 | センサーモニタ、デバッグ出力 |
 | Keyboard+Mouse | USB キーボード＋マウスとして動作 | PC 操作の自動化 |
 | Keyboard+Mouse+WebHID | 上記＋ブラウザ通信（EP3）を追加 | KBD/Mouse ＋ WebHID 同時使用 |
-| Terminal HID | hidapitester 等のツールと通信 | PC ネイティブアプリとの連携 |
+| Terminal HID | ch32fun のデバッグ出力を HID Feature Report で取り出す | 専用の受信プログラムを自作する場合 |
 | No USB (SD log / UART only) | USB スタックを除外（約 484B 節約） | SD ログ・UART 専用スケッチ |
 
 ### U(S)ART support（シリアル選択）
@@ -332,8 +332,12 @@ void loop() {
 
 ## Terminal HID モード
 
-hidapitester 等の PC ネイティブツールと HID で通信します。  
-`Tools > USB > Terminal HID` を選択してください。
+ch32fun のデバッグ出力（printf）を HID 経由で取り出すモードです。  
+`Tools > USB > Terminal HID` を選択してください。VID/PID は `1209:D003` になります。
+
+> **先に確認してください。** このモードは、**PC 側に専用の受信プログラムが必要**です。  
+> PC で文字を受け取りたいだけなら、[WebHID Only モード](#webhid-only-モードデフォルト)（`1209:D004`）を使ってください。  
+> そちらは一般的な HID Input Report を送るので、hidapitester でも Python でもそのまま受信できます。
 
 ```cpp
 void setup() {
@@ -353,6 +357,57 @@ void loop() {
 | `HIDuiap.write(buf, len)` | データを送信する |
 | `HIDuiap.read(buf, maxlen)` | データを受信する |
 | `HIDuiap.available()` | 受信データのバイト数を返す |
+
+### 送受信の仕組み（他モードと大きく異なります）
+
+Terminal HID には **Input Report がありません**。持っているのは Feature Report だけです。  
+デバイスから自発的にデータが送られてくることはなく、**PC 側が取りに行く**方式です。
+
+| 向き | 経路 |
+|------|------|
+| UIAPduino → PC | `HIDuiap.write()` が 1 文字ずつ `DMDATA0` レジスタに置く。PC が **Feature Report ID `0xFD`（10 進 253）** を要求すると 1 文字返る |
+| PC → UIAPduino | PC が Feature Report `0xFD` で送信。`HIDuiap.read()` / `available()` で取り出す |
+
+受信プログラムを書くときの注意点です。
+
+- **1 回の要求で 1 文字**しか取れません。`"Hello UIAPduino\n"`（16 文字）なら 16 回要求します。
+- UIAPduino は PC が取りに来るのを **約 120ms しか待ちません**。それを過ぎた文字は捨てられます。数 ms 間隔で読み続けてください。
+- 返る 8 バイトは、先頭が状態バイト、2 バイト目以降が文字です。
+
+### hidapitester では受信できません
+
+[hidapitester](https://github.com/todbot/hidapitester) の `--read-input` / `--read-input-forever` は Input Report を待つコマンドです。Terminal HID は Input Report を持たないため、`read -1 bytes` になります。
+
+```
+> hidapitester.exe --vidpid 1209:D003 --open --read-input-forever
+Reading up to 64-byte input report, 250 msec timeout...read -1 bytes:
+error: Success
+```
+
+`--read-feature 253` で 1 文字だけなら取れる可能性がありますが、hidapitester には Feature Report を読み続けるオプションがないため、文字列としては受け取れません。
+
+hidapitester で受信したい場合は、**WebHID Only モード**に切り替えてください。
+
+```
+> hidapitester.exe --vidpid 1209:D004 --open --read-input-forever
+```
+
+このとき、スケッチ側は 8 バイトずつ送ります（Input Report 1 個が 8 バイトのため）。
+
+```cpp
+#include <WebHID.h>
+
+void setup() {
+  WebHID.begin();
+  delay(5000);
+}
+
+void loop() {
+  WebHID.send((const uint8_t*)"Hello UI", 8);
+  WebHID.send((const uint8_t*)"APduino\n", 8);
+  delay(1000);
+}
+```
 
 ---
 

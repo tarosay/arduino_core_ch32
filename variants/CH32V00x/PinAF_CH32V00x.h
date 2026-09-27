@@ -90,10 +90,11 @@ static inline void pinV32_DisconnectDebug(PinName pin)
   // Called from pinMode(), so registers are written directly instead of via
   // RCC_APB2PeriphClockCmd()/GPIO_PinRemapConfig() to keep the code small.
   // SWCFG[2:0] = 100 : SDI disabled (same as GPIO_Remap_SDI_Disable).
+  // SWCFG is 000 after reset, so setting bit 26 is enough (same as swio_self.h).
+  // The AFIO clock is already enabled at startup by usb_disconnect() in uiapusb.c.
   if (pin == PD_1)
   {
-    RCC->APB2PCENR |= RCC_AFIOEN;
-    AFIO->PCFR1 = (AFIO->PCFR1 & ~AFIO_PCFR1_SWJ_CFG) | AFIO_PCFR1_SWJ_CFG_DISABLE;
+    AFIO->PCFR1 |= AFIO_PCFR1_SWJ_CFG_DISABLE;
   }
 #else
   (void)(pin);

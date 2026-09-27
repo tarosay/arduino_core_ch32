@@ -22,7 +22,9 @@ static uint8_t g_uiap_usb_inited  = 0;
  */
 static void usb_disconnect(void)
 {
-    RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD;
+    /* AFIO も起動時に入れておく。pinMode() が PD1 の SWIO を切り離すときに
+     * AFIO->PCFR1 を書くため（pinMode() 側でクロックを入れるより小さく済む）。 */
+    RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO;
 
     /* CC1 (PC4) = floating input: CNF=01 MODE=00 → 0x4 */
     GPIOC->CFGLR = (GPIOC->CFGLR & ~(0xfu << (4 * 4)))

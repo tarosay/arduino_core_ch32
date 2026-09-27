@@ -989,7 +989,23 @@ WS2812B の DIN を pin 8（PC6）に接続してください。
 
 ## 更新履歴
 
-### v1.2.14（最新）
+### v1.2.15（最新）
+
+- **ピン 11（PD1）が `pinMode()` だけで GPIO として使えるようになった**
+  - PD1 は書き込み・デバッグ用の SWIO と共用で、起動直後は SWIO になっている。これまでは `pinDisconnectDebug(11)` を先に呼ばないと GPIO として働かず、`pinMode(11, OUTPUT)` と `digitalWrite(11, HIGH)` でも 0V のままだった
+  - `pinMode()` が PD1 のときだけ SWIO を切り離すようにした。`pinDisconnectDebug()` は既存のスケッチのために残してあり、呼んでも問題ない
+  - 書き込みはボタンを押しながら USB 接続してブートローダー経由で行うので、SWIO を切り離しても書き込みには影響しない（minichlink / UIAPduino (USB) とも実機で確認）
+  - Flash の増加は、ピン番号が定数なら 0 バイト。変数で渡すと 20〜24 バイト（UIAPruby のファーム 24 構成で実測）
+  - あわせて、AFIO のクロックを起動時に入れるようにした
+  - 実機でピン 11 が HIGH になることを確認済み
+- **`HIDuiap` は Terminal HID のときだけ使えるようにした**
+  - これまでは WebHID Only / No USB などでも `HIDuiap.write()` がコンパイルを通り、リンクの段階で `undefined reference to 'uiapusb_write'` になっていた。原因が分かりにくいので、Terminal HID 以外では `'HIDuiap' was not declared` というコンパイルエラーで止まるようにした
+  - `HIDuiap` を使うスケッチは `Tools > USB` を `Terminal HID` にする
+- **README に Terminal HID の受信方法を追記**
+  - Terminal HID は Input Report を持たず、PC が Feature Report `0xFD` を要求して 1 文字ずつ取りに行く方式であることを明記した
+  - `hidapitester --read-input-forever` では受信できない理由と、代わりに WebHID Only を使う手順を書いた
+
+### v1.2.14
 
 - **書き込み方法に `UIAPduino (USB)` を追加** — macOS から書き込めるようになった
   - `minichlink` には macOS 版のバイナリが同梱されておらず、Mac では `exec format error` で起動すらしなかった。**ビルドは通るのに書き込めない**、という状態だった

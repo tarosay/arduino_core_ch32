@@ -53,6 +53,11 @@ void pinMode(uint32_t ulPin, uint32_t ulMode)
       }
     }
 #endif
+#if defined(CH32V00x)
+    // PD1 is shared with SWIO: release it from the debug interface so that
+    // pinMode(GPIO_PIN_11, ...) works without calling pinDisconnectDebug().
+    pin_DisconnectDebug(p);
+#endif
     switch (ulMode)  /* INPUT_FLOATING */
     {
       case INPUT: 
@@ -96,8 +101,8 @@ void digitalToggle(uint32_t ulPin)
 }
 
 // Disconnect the debug interface from a pin given its Arduino pin number.
-// Call once before pinMode() for pins shared with the debug interface (e.g. GPIO_PIN_11 / PD1).
-// Keeping this as a separate call avoids pulling RCC/AFIO library code into every sketch.
+// On CH32V00x, pinMode() already does this for PD1 (GPIO_PIN_11);
+// this function is kept for compatibility with existing sketches.
 void pinDisconnectDebug(uint32_t ulPin)
 {
   PinName p = digitalPinToPinName(ulPin);

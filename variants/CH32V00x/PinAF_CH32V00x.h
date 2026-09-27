@@ -87,12 +87,13 @@ static inline void pinV32_DisconnectDebug(PinName pin)
 #ifndef CH32V_LOCK_DEBUG
   // Disconnect SWIO (PD1) debug signal so the pin can be used as normal GPIO.
   // Warning: Need to reconnect under reset.
-  // RCC enable is inside the if-block so that this function is a true no-op
-  // for all other pins, avoiding unnecessary RCC/AFIO code being linked in.
+  // Called from pinMode(), so registers are written directly instead of via
+  // RCC_APB2PeriphClockCmd()/GPIO_PinRemapConfig() to keep the code small.
+  // SWCFG[2:0] = 100 : SDI disabled (same as GPIO_Remap_SDI_Disable).
   if (pin == PD_1)
   {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_SDI_Disable, ENABLE);
+    RCC->APB2PCENR |= RCC_AFIOEN;
+    AFIO->PCFR1 = (AFIO->PCFR1 & ~AFIO_PCFR1_SWJ_CFG) | AFIO_PCFR1_SWJ_CFG_DISABLE;
   }
 #else
   (void)(pin);

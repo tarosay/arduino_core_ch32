@@ -34,7 +34,7 @@ Arduino IDE で UIAPduino を使うための Arduino コアです。
 | GPIO_PIN_8  | PC6 | **SPI MOSI** |
 | GPIO_PIN_9  | PC7 | **SPI MISO** |
 | GPIO_PIN_10 | PD0 | |
-| GPIO_PIN_11 | PD1 | SWIO（要 `pinDisconnectDebug()`） |
+| GPIO_PIN_11 | PD1 | SWIO（`pinMode()` で GPIO に切り替わる） |
 | GPIO_PIN_12 | PD2 | A3 / CC2（USB-C） |
 | GPIO_PIN_13 | PD3 | A4 / USB D+（ヘッダー無し） |
 | GPIO_PIN_14 | PD4 | A7 / USB D-（ヘッダー無し） |
@@ -42,7 +42,7 @@ Arduino IDE で UIAPduino を使うための Arduino コアです。
 | GPIO_PIN_16 | PD6 | A6 / **UART RX** |
 | GPIO_PIN_17 | PD7 | RESET（ヘッダー無し） |
 
-> **PD1 (SWIO):** 通常の GPIO として使う場合は `setup()` 内で `pinDisconnectDebug(GPIO_PIN_11)` を1回呼んでください。
+> **PD1 (SWIO):** `pinMode(GPIO_PIN_11, ...)` を呼ぶと、自動で SWIO から切り離されて通常の GPIO になります。
 
 ---
 
@@ -864,10 +864,11 @@ free-running カウンタなので、µs へ割らずカウントのまま比べ
 
 PD1（SWIO デバッグピン）を通常の GPIO として使えるようにします。
 
+CH32V003 では `pinMode(GPIO_PIN_11, ...)` が同じ処理を自動で行うため、呼ぶ必要はありません。既存のスケッチとの互換のために残しています。
+
 ```cpp
 void setup() {
-  pinDisconnectDebug(GPIO_PIN_11);  // PD1 を通常 GPIO に切り替え
-  pinMode(GPIO_PIN_11, OUTPUT);
+  pinMode(GPIO_PIN_11, OUTPUT);     // PD1 は自動で通常 GPIO に切り替わる
 }
 ```
 

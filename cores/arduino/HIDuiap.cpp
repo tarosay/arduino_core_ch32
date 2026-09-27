@@ -1,5 +1,5 @@
 #include "HIDuiap.h"
 
-#ifndef UIAP_COMPOSITE_HID
+#ifdef UIAP_USB_TERMINAL
 HIDuiapClass HIDuiap;
 #endif

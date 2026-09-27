@@ -3,7 +3,7 @@
 
 #include "uiapusb.h"
 
-#ifndef UIAP_COMPOSITE_HID
+#ifdef UIAP_USB_TERMINAL
 
 class HIDuiapClass {
 public:
@@ -15,6 +15,6 @@ public:
 
 extern HIDuiapClass HIDuiap;
 
-#endif // UIAP_COMPOSITE_HID
+#endif // UIAP_USB_TERMINAL
 
 #endif // _HIDUIAP_CLASS_H

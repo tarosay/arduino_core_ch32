@@ -63,7 +63,7 @@ static const uint8_t webhid_hid_desc[] = {
 static const uint8_t config_descriptor[] = {
 	// configuration descriptor (1 interface: WebHID)
 	9, 2,
-	0x29, 0x00,  // wTotalLength = 41 (9+9+9+7+7)
+	0x22, 0x00,  // wTotalLength = 34 (9+9+9+7)
 	0x01,        // bNumInterfaces = 1
 	0x01,        // bConfigurationValue
 	0x00,        // iConfiguration

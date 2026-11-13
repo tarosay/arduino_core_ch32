@@ -987,7 +987,18 @@ WS2812B の DIN を pin 8（PC6）に接続してください。
 
 ## 更新履歴
 
-### v1.2.15（最新）
+### v1.2.16（最新）
+
+- **WebHID Only の構成記述子の長さ（`wTotalLength`）を直した**
+  - 41 バイトと宣言していたが、実際に送る中身は 34 バイト（構成 9 ＋ インタフェース 9 ＋ HID 9 ＋ エンドポイント 7）だった。エンドポイントは EP1 IN の 1 つだけなのに、7 を 2 回足していた
+  - このため、macOS の Chrome で WebHID の機器として出てこなかった。直したファームは Windows 11 と macOS の Chrome で認識することを実機で確認済み
+  - WebHID Only は `Tools > USB` の既定なので、USB の設定を変えずにビルドしたスケッチはすべて該当する。WebHID Only で作ったファームは、このバージョンでビルドし直すこと
+  - 他の構成（Keyboard+Mouse+WebHID / Keyboard+Mouse / Terminal HID / No USB）の値は合っていた
+- **`Tools > Upload method` の既定を `UIAPduino (USB)` にした（Windows / macOS / Linux 共通）**
+  - これまでの既定 `minichlink` は macOS では動かなかった
+  - `minichlink` も引き続き選べる。Windows / Linux ではこれまでどおり書ける
+
+### v1.2.15
 
 - **ピン 11（PD1）が `pinMode()` だけで GPIO として使えるようになった**
   - PD1 は書き込み・デバッグ用の SWIO と共用で、起動直後は SWIO になっている。これまでは `pinDisconnectDebug(11)` を先に呼ばないと GPIO として働かず、`pinMode(11, OUTPUT)` と `digitalWrite(11, HIGH)` でも 0V のままだった

@@ -76,7 +76,34 @@ https://github.com/tarosay/board_manager_files/raw/main/package_uiap_hid_index.j
 
 ### 仕組み
 
-`Tools > Upload method` は既定の `minichlink` のままで構いません。
+`Tools > Upload method` は既定の `UIAPduino (USB)` のままで構いません（Windows / macOS / Linux 共通）。
+この基板のブートローダ（rv003usb）だけを相手にする専用ツール `uiapflash` が呼ばれます。
+
+```
+tools.uiapflash.upload.pattern="{path}{cmd}" {upload.verbose} --flash-size {upload.maximum_size} "{build.path}/{build.project_name}.bin"
+```
+
+USB HID の Feature Report だけで書くので、ドライバも外部ライブラリも要りません。
+64 バイトごとに読み返して比較し、違うところだけ消して書きます。
+全一致を確認してから、そのままアプリとして起動します。
+
+### ほかの選択肢
+
+`Tools > Upload method` では次のものが選べます。
+
+| 選択肢 | 書き込み器 | 用途 |
+|--------|-----------|------|
+| **UIAPduino (USB)**（既定） | 不要 | 通常はこれ。Windows / macOS / Linux で使えます |
+| **minichlink** | 不要 | v1.2.15 までの既定。**macOS では動きません** |
+| WCH-SWD | WCH-LinkE が必要 | ブートローダ経由で書けない場合の代替 |
+| WCH-ISP | 書き込み器が必要 | 同上 |
+
+#### minichlink
+
+v1.2.15 までの既定です。Windows / Linux ではこちらでも書けます。
+macOS には minichlink の実行ファイルが同梱されておらず、`exec format error` で
+起動すらしません。
+
 `platform.txt` の recipe は次のようになっていて、プログラマの指定（`-C`）がありません。
 
 ```
@@ -96,36 +123,7 @@ Found UIAPduino Pro Micro CH32V003 V1.4 Bootloader   ← これに当たる
 ```
 
 見つかったブートローダへ、ビルドした `.bin` を USB 経由で流し込みます。
-
-### ほかの選択肢
-
-`Tools > Upload method` では次のものが選べます。
-
-| 選択肢 | 書き込み器 | 用途 |
-|--------|-----------|------|
-| **minichlink**（既定） | 不要 | 通常はこれ。**macOS では動きません** |
-| **UIAPduino (USB)** | 不要 | **macOS はこちらを選んでください。** Windows / Linux でも使えます |
-| WCH-SWD | WCH-LinkE が必要 | ブートローダ経由で書けない場合の代替 |
-| WCH-ISP | 書き込み器が必要 | 同上 |
-
-#### UIAPduino (USB) — macOS はこちら
-
-macOS には minichlink の実行ファイルが同梱されておらず、`exec format error` で
-起動すらしません。`Tools > Upload method` から `UIAPduino (USB)` を選んでください。
-
-この基板のブートローダ（rv003usb）だけを相手にする専用ツール `uiapflash` が呼ばれます。
-
-```
-tools.uiapflash.upload.pattern="{path}{cmd}" {upload.verbose} --flash-size {upload.maximum_size} "{build.path}/{build.project_name}.bin"
-```
-
-USB HID の Feature Report だけで書くので、ドライバも外部ライブラリも要りません。
-64 バイトごとに読み返して比較し、違うところだけ消して書きます。
-全一致を確認してから、そのままアプリとして起動します。
-
-基板を書き込みモードにする手順（ボタンを押しながら USB 接続）は minichlink のときと同じです。
-Windows / Linux でも使えますが、そちらは minichlink がそのまま動くので、
-既定を変える必要はありません。
+基板を書き込みモードにする手順（ボタンを押しながら USB 接続）は UIAPduino (USB) のときと同じです。
 
 ---
 

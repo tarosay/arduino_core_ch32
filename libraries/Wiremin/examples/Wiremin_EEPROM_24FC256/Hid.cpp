@@ -5,14 +5,13 @@
 // グローバルインスタンスの実体
 Hid hid;
 
-// ── Print プロトコル内部定数 ──────────────────────────────────────────────────
-#define _HP_MARKER 0x50
-#define _HP_MORE 0x80
-#define _HP_NL 0x02
-#define _HP_CLEAR 0x04
+// ── Print プロトコル内部定数（0x50）──────────────────────────────────────────
+#define _HP_MARKER  0x50
+#define _HP_MORE    0x80
+#define _HP_CLEAR   0x04
 
 // ════════════════════════════════════════════════════════════════════════════
-// Print 系（EP3 → ブラウザ）
+// Print 系（0x50）
 // ════════════════════════════════════════════════════════════════════════════
 
 void Hid::_hpSend(uint8_t flags, const char* s, uint8_t n) {
@@ -40,18 +39,8 @@ void Hid::Print(int v) {
 }
 
 void Hid::Println(const char* s) {
-  int len = strlen(s), off = 0;
-  if (!len) {
-    _hpSend(_HP_NL, "", 0);
-    return;
-  }
-  while (off < len) {
-    int n = len - off;
-    if (n > 6) n = 6;
-    bool last = (off + n >= len);
-    _hpSend(last ? _HP_NL : _HP_MORE, s + off, n);
-    off += n;
-  }
+  Print(s);
+  Print("\n");  // 0x0A をペイロードに載せて送信
 }
 
 void Hid::Println(int v) {
@@ -65,14 +54,59 @@ void Hid::Clear() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Recv — ブラウザからの受信（WebHID.recv のラッパー）
+// Write — バイナリ送信（0x52）
+// ════════════════════════════════════════════════════════════════════════════
+void Hid::Write(const uint8_t* buf, uint8_t len) {
+  uint8_t off = 0;
+  while (off < len) {
+    uint8_t n = len - off;
+    if (n > 5) n = 5;
+    uint8_t pkt[8] = { 0x52, (uint8_t)((off + n < len) ? 0x80 : 0x00), n, 0, 0, 0, 0, 0 };
+    for (uint8_t i = 0; i < n; i++) pkt[i + 3] = buf[off + i];
+    WebHID.send(pkt, 8);
+    delay(12);
+    off += n;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Ready — 準備完了通知（0x53）
+// ════════════════════════════════════════════════════════════════════════════
+void Hid::Ready() {
+  uint8_t pkt[8] = { 0x53, 0, 0, 0, 0, 0, 0, 0 };
+  WebHID.send(pkt, 8);
+  delay(12);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Send — Raw 送信
+// ════════════════════════════════════════════════════════════════════════════
+void Hid::Send(const uint8_t* buf, uint8_t len) {
+  WebHID.send(buf, len);
+  delay(12);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Recv — Raw 受信（Feature Report）
 // ════════════════════════════════════════════════════════════════════════════
 uint8_t Hid::Recv(uint8_t* buf, uint8_t maxLen) {
   return WebHID.recv(buf, maxLen);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// GetPos（hid-print.html では未使用。他スケッチとの Hid.h 互換性のため実装）
+// WaitAvailable — ブラウザ接続待ち（データを消費しない）
+// ════════════════════════════════════════════════════════════════════════════
+bool Hid::WaitAvailable(uint32_t timeoutMs) {
+  unsigned long t0 = millis();
+  while (true) {
+    if (WebHID.available() > 0) return true;
+    if (timeoutMs > 0 && millis() - t0 >= timeoutMs) return false;
+    delay(10);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GetPos（0x51）
 // ════════════════════════════════════════════════════════════════════════════
 void Hid::_request(uint8_t queryType) {
   uint8_t buf[8] = { HID_QUERY_MARKER, queryType, 0, 0, 0, 0, 0, 0 };

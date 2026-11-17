@@ -5,7 +5,7 @@
 [![Toolchain](https://img.shields.io/badge/toolchain-xPack%20GCC%2014.2-blue)](https://xpack-dev-tools.github.io/riscv-none-elf-gcc-xpack/)
 
 Arduino IDE で UIAPduino を使うための Arduino コアです。  
-[openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32) を fork し、UIAPduino 向けに独自に開発・改良しています。
+[YuukiUmeta-UIAP/arduino_core_ch32](https://github.com/YuukiUmeta-UIAP/arduino_core_ch32)（[openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32) の fork）を fork し、UIAPduino 向けに独自に開発・改良しています。
 
 ---
 
@@ -1262,7 +1262,7 @@ PID: 0xD004  (UIAPduino 向けサンプル値)
 
 ## ライセンス
 
-fork 元: [openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32)  
+fork 元: [YuukiUmeta-UIAP/arduino_core_ch32](https://github.com/YuukiUmeta-UIAP/arduino_core_ch32)（本家: [openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32)）  
 本リポジトリの改変部分は同ライセンスに従います。
 
 ## 連絡先・バグ報告

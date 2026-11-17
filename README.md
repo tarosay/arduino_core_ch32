@@ -1,5 +1,9 @@
 # Arduino core for UIAPduino (HID ProMicro CH32V003)
 
+[![Release](https://img.shields.io/github/v/tag/tarosay/arduino_core_ch32?label=release&sort=semver)](https://github.com/tarosay/arduino_core_ch32/releases)
+[![Arduino IDE 2](https://img.shields.io/badge/Arduino%20IDE-2.x-00979D?logo=arduino&logoColor=white)](https://www.arduino.cc/en/software)
+[![Toolchain](https://img.shields.io/badge/toolchain-xPack%20GCC%2014.2-blue)](https://xpack-dev-tools.github.io/riscv-none-elf-gcc-xpack/)
+
 Arduino IDE で UIAPduino を使うための Arduino コアです。  
 [openwch/arduino_core_ch32](https://github.com/openwch/arduino_core_ch32) を fork し、UIAPduino 向けに独自に開発・改良しています。
 
@@ -988,7 +992,31 @@ WS2812B の DIN を pin 8（PC6）に接続してください。
 
 ## 更新履歴
 
-### v1.2.17（最新）
+### v1.2.18（最新）
+
+本家 openwch/arduino_core_ch32（v1.0.7 まで）の修正を 1 件ずつ照合し、CH32V003 に効く 7 件を取り込んだ。
+
+- **`random()` / `randomSeed()` が使えるようになった**
+  - これまではリンクの段階で `undefined reference to 'srand'` / `'rand'` になり、使えなかった（このコアは newlib をリンクしないため。`C Runtime Library` を `Newlib Nano` にしても同じ）
+  - 乱数はコアの中で xorshift32 で作る。掛け算を使わないので軽い（`random()` を使うスケッチで +224 バイト、RAM +8 バイト）
+- **`analogRead(PADC_VREF)` で内部基準電圧（1.2V）を読めるようになった**
+  - これまでは PA1（ピン 0 / A1）の電圧を読んでいた
+  - 読んだ値から電源電圧を計算できる（電源電圧 ≒ 1.2V × 1023 ÷ 読んだ値）。実機で 3.3V 動作のとき 383、5V 動作のとき 247 を確認
+- **`analogReadResolution()` を呼ぶと値の大きさが合わなかったのを直した**
+  - これまでは呼ぶと換算元が 12 ビットとみなされ、`analogReadResolution(10)` で値が 4 分の 1 になっていた。呼ばないスケッチには影響していない
+- **`Serial` でパリティを付けるとデータが 1 ビット欠けていたのを直した**
+  - `Serial.begin(9600, SERIAL_8E1)` が「データ 7 ビット＋パリティ」になっていた。`Tools > U(S)ART` が `HardwareSerial` のときだけ関係する
+  - このコア独自の `SERIAL_9E1` などパリティ付き 9 ビットの定数は、V003 では作れない形なので、`begin()` で止まるようになった
+- **SPI: `begin()` の前に呼んだ `setClockDivider()` / `setDataMode()` が無視されていたのを直した**
+  - なお V003 の SPI は MSB ファースト固定で、`setBitOrder(LSBFIRST)` はこれまでどおり効かない
+- **`pinMode(pin, OUTPUT_AF_PP)` / `pinMode(pin, OUTPUT_AF_OD)` で止まらなくなった**
+  - 定数はあったのに `pinMode()` が受け付けず、そこで止まっていた
+- **スケッチから `DEBUG` マクロが見えないようにした**
+  - SDK の `debug.h` が `DEBUG` を勝手に定義していたため、`#ifdef DEBUG` で切り替えるスケッチがビルドエラーになったり、無効のつもりのデバッグ出力が入ったりしていた
+- これらを使わないスケッチの `.bin` は変わらない
+- `DEBUG` 以外の 6 件は実機（Pro Micro CH32V003 V1.4）で確認済み。`DEBUG` はコンパイル時だけの変更なのでビルドで確認した
+
+### v1.2.17
 
 - **スケッチ例 `Wiremin_VL53L0X` を追加** — VL53L0X（TOF センサ）の距離を、uiap-hid-web の HID Graph に表示する
   - 50 ms ごとに `dist[mm]:値` の形で送る。測れなかったときとタイムアウトのときは `nodata` を送る

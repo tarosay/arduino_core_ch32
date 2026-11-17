@@ -950,6 +950,7 @@ digitalWrite(GPIO_PIN_6, HIGH);
 | Wiremin_master_test | マスター: スレーブに点滅間隔を書き込み・読み返し |
 | Wiremin_BMP280 | BMP280 センサの温度・気圧を WebHID へ出力 |
 | Wiremin_bmi270 | BMI270 6軸 IMU の加速度を WebHID へ出力 |
+| Wiremin_VL53L0X | VL53L0X（TOF センサ）の距離を HID Graph に表示 |
 | Wiremin_EEPROM_24FC256 | I2C EEPROM 24FC256 の読み書きテスト（16bit アドレス・ページ境界・不揮発の確認） |
 | Wiremin_EEPROM_CAT24M01 | I2C EEPROM CAT24M01（1Mbit）の読み書きテスト（17bit アドレス・256B ページ・64K 境界の確認） |
 | Wiremin_size_test | Flash サイズ計測用（Wire.h との比較に使用） |

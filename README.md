@@ -988,7 +988,21 @@ WS2812B の DIN を pin 8（PC6）に接続してください。
 
 ## 更新履歴
 
-### v1.2.16（最新）
+### v1.2.17（最新）
+
+- **スケッチ例 `Wiremin_VL53L0X` を追加** — VL53L0X（TOF センサ）の距離を、uiap-hid-web の HID Graph に表示する
+  - 50 ms ごとに `dist[mm]:値` の形で送る。測れなかったときとタイムアウトのときは `nodata` を送る
+  - `Tools > USB` は `WebHID Only`。配線は SDA → PC1、SCL → PC2
+  - I2C は Wiremin を使う。Pololu の VL53L0X ライブラリ（v1.3.1）は Wire.h 専用なので、Wiremin で動くように書き換えた `VL53L0Xmin.h` をスケッチに同梱した（元のライセンス表記はファイルの先頭に残してある）
+  - 実機で確認済み（実 `.bin` 9,832 バイト）
+- **Wire / Wiremin のスケッチ例 11 本の `Hid` クラスを、uiap-hid-web の最新版にそろえた**
+  - `Println()` の改行は、NL フラグ（`0x02`）ではなく `0x0A` を本文に入れて送るようになった。HID Console と HID Graph はどちらの送り方も表示できる
+  - `Write()`（`0x52`）/ `Ready()`（`0x53`）/ `Send()` / `WaitAvailable()` が使えるようになった
+  - `i2c_BMP280_test` にあった独自の `Write()` はなくなった（どのスケッチからも呼ばれていなかった）
+  - 11 本とも実 `.bin` が 72〜84 バイト小さくなった
+- コア本体（`cores` / `boards.txt` / `platform.txt` / 各ライブラリ本体）は変わっていない。変わったのはスケッチ例だけ
+
+### v1.2.16
 
 - **WebHID Only の構成記述子の長さ（`wTotalLength`）を直した**
   - 41 バイトと宣言していたが、実際に送る中身は 34 バイト（構成 9 ＋ インタフェース 9 ＋ HID 9 ＋ エンドポイント 7）だった。エンドポイントは EP1 IN の 1 つだけなのに、7 を 2 回足していた

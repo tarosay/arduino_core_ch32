@@ -22,10 +22,23 @@ extern "C" {
 }
 #include "WMath.h"
 
+// Own generator instead of newlib's rand()/srand(): this core does not link
+// newlib (-nostdlib), so rand()/srand() are undefined, and linking newlib only
+// for them costs flash. xorshift32 needs no multiply (V003 has no M extension).
+static uint32_t _rand_next = 1;
+
+static long _rand(void)
+{
+  _rand_next ^= _rand_next << 13;
+  _rand_next ^= _rand_next >> 17;
+  _rand_next ^= _rand_next << 5;
+  return (long)(_rand_next & RAND_MAX);
+}
+
 extern void randomSeed(uint32_t dwSeed)
 {
   if (dwSeed != 0) {
-    srand(dwSeed) ;
+    _rand_next = dwSeed;
   }
 }
 
@@ -35,7 +48,7 @@ extern long random(long howbig)
     return 0 ;
   }
 
-  return rand() % howbig;
+  return _rand() % howbig;
 }
 
 extern long random(long howsmall, long howbig)

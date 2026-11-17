@@ -33,6 +33,10 @@
   // #include "SrcWrapper.h"
 #endif
 
+#ifndef DEBUG
+#define CH32_SDK_DEBUG_DEFAULT  // DEBUG not set by the user, the SDK's debug.h sets its own
+#endif
+
 #include "wiring.h"
 
 /* sketch */
@@ -64,6 +68,11 @@ void yield(void);
 
 #ifdef __cplusplus
 #include "HIDuiap.h"
+#endif
+
+#ifdef CH32_SDK_DEBUG_DEFAULT  // keep the SDK's DEBUG out of sketches (#125)
+#undef DEBUG
+#undef CH32_SDK_DEBUG_DEFAULT
 #endif
 
 #endif // Arduino_h
